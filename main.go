@@ -7,8 +7,8 @@ import (
   "fmt"
   "flag"
   "path/filepath"
-  "afc/utils"
-  "afc/converters"
+  "github.com/bubu-gigi/afc/utils"
+  "github.com/bubu-gigi/afc/converters"
 )
 
 func main() {
