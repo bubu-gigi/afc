@@ -1,3 +1,3 @@
-module github.com/bubu-gigi/afc
+module afc
 
 go 1.24.4

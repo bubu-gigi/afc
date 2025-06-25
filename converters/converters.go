@@ -2,11 +2,12 @@ package converters
 
 import (
   "os/exec"
+  "os"
   "fmt"
   "afc/utils"
 )
 
-func ConvertPfToCsv(pf []string) string {
+func ConvertPfToCsv(pf []string) {
   peCmd := utils.FindToolExe("PECmd.exe")
 
   for _, pfPath := range pf {
@@ -36,17 +37,17 @@ func ConvertJumpListToCsv(jumpLists []string) {
   }
 }
 
-func ConvertJumpListToCsv(jumpLists []string) {
-  jlCmd := utils.FindToolExe("JLECmd.exe")
+func ConvertEventLogsToCsv(evtxFiles []string) {
+  evtxCmd := utils.FindToolExe("EvtxECmd.exe")
 
-  for _, jlPath := range jumpLists {
-    outFile := jlPath + ".csv"
-    cmd := exec.Command(jlCmd, "-f", jlPath, "--csv", outFile)
+  for _, evtxPath := range evtxFiles {
+    outFile := evtxPath + ".csv"
+    cmd := exec.Command(evtxCmd, "-f", evtxPath, "--csv", outFile)
     output, err := cmd.CombinedOutput()
     if err != nil {
-      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", jlPath, err, output)
+      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", evtxPath, err, output)
     } else {
-      fmt.Printf("JLECmd analyzed %s -> %s\n", jlPath, outFile)
+      fmt.Printf("EvtxECmd analyzed %s -> %s\n", evtxPath, outFile)
     }
   }
 }
@@ -62,21 +63,6 @@ func ConvertLnkFilesToCsv(lnkFiles []string) {
       fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", lnkPath, err, output)
     } else {
       fmt.Printf("LECmd analyzed %s -> %s\n", lnkPath, outFile)
-    }
-  }
-}
-
-func ConvertWindowsTimelineToCsv(timelineFiles []string) {
-  wxtCmd := utils.FindToolExe("WxTCmd.exe")
-
-  for _, timelinePath := range timelineFiles {
-    outFile := timelinePath + ".csv"
-    cmd := exec.Command(wxtCmd, "-f", timelinePath, "--csv", outFile)
-    output, err := cmd.CombinedOutput()
-    if err != nil {
-      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", timelinePath, err, output)
-    } else {
-      fmt.Printf("WxTCmd analyzed %s -> %s\n", timelinePath, outFile)
     }
   }
 }
@@ -141,17 +127,17 @@ func ConvertAmcacheToCsv(amcacheFiles []string) {
   }
 }
 
-func ConvertAmcacheToCsv(amcacheFiles []string) {
-  amcacheCmd := utils.FindToolExe("AmcacheParser.exe")
+func ConvertMftToCsv(mftFiles []string) {
+  mftCmd := utils.FindToolExe("MFTECmd.exe")
 
-  for _, amPath := range amcacheFiles {
-    outFile := amPath + ".csv"
-    cmd := exec.Command(amcacheCmd, "-f", amPath, "--csv", outFile)
+  for _, mftPath := range mftFiles {
+    outFile := mftPath + ".csv"
+    cmd := exec.Command(mftCmd, "-f", mftPath, "--csv", outFile)
     output, err := cmd.CombinedOutput()
     if err != nil {
-      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", amPath, err, output)
+      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", mftPath, err, output)
     } else {
-      fmt.Printf("AmcacheParser analyzed %s -> %s\n", amPath, outFile)
+      fmt.Printf("MFTECmd analyzed %s -> %s\n", mftPath, outFile)
     }
   }
 }
