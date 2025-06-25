@@ -25,6 +25,7 @@ func main() {
   output, err := cmd.CombinedOutput()
   if err != nil {
     fmt.Fprintf(os.Stderr, "Error running KAPE:\n%s\nOutput:\n%s\n", err, output)
+    fmt.Printf("Please check whether is into the PATH")
     os.Exit(1)
   }
 
@@ -64,8 +65,8 @@ func main() {
 
 func handleArguments() (string, string, string) {
   kpath := flag.String("kpath", utils.FindToolExe("kape.exe"), "Kape Directory")
-  ksource := flag.String("ksource", "", "KapeTriage source")
-  kdest := flag.String("kdest", "", "KapeTriage destination")
+  ksource := flag.String("ksource", "C:\", "KapeTriage source")
+  kdest := flag.String("kdest", "C:\Output", "KapeTriage destination")
   flag.Parse()
 
   if *ksource == "" || *kdest == "" {
