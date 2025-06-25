@@ -65,8 +65,8 @@ func main() {
 
 func handleArguments() (string, string, string) {
   kpath := flag.String("kpath", utils.FindToolExe("kape.exe"), "Kape Directory")
-  ksource := flag.String("ksource", "C:\", "KapeTriage source")
-  kdest := flag.String("kdest", "C:\Output", "KapeTriage destination")
+  ksource := flag.String("ksource", "C:\\" ,"KapeTriage source")
+  kdest := flag.String("kdest", "C:\\Output", "KapeTriage destination")
   flag.Parse()
 
   if *ksource == "" || *kdest == "" {
