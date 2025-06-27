@@ -15,7 +15,7 @@ func FindToolExe(tool string) string {
     os.Exit(1)
   }
   kapePath := strings.TrimSpace(string(pathBytes))
-  fmt.Println("Found %s: %s", tool, kapePath)
+  fmt.Printf("Found %s: %s", tool, kapePath)
   return kapePath
 }
 
