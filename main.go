@@ -31,8 +31,8 @@ func main() {
 
   fmt.Println("Kape run successfully")
 
-  pf, jl, _, evtx, _, _, _, _, _, _, _, _,
-  lnk, recycle, _, timeline, _, _, _, _, _, _,
+  pf, jl, registry, evtx, _, _, _, _, _, _, jobs, _,
+  lnk, recycle, usnjrnl, timeline, _, _, _, _, _, thumb,
   srum, _, amcache, _, _, mft := collectArtifacts(kdest)
 
   converters.ConvertPfToCsv(pf)
@@ -40,6 +40,9 @@ func main() {
 
   converters.ConvertJumpListToCsv(jl)
   fmt.Println("Converted jump list to csv successfully")
+
+  converters.ConvertRegistryToCsv(registry)
+  fmt.Println("Converted registry hives to csv successfully")
 
   converters.ConvertEventLogsToCsv(evtx)
   fmt.Println("Converted evtx to csv successfully")
@@ -56,11 +59,20 @@ func main() {
   converters.ConvertSrumToCsv(srum)
   fmt.Println("Converted srum to csv successfully")
 
+  converters.ConvertScheduledTasksToCsv(jobs)
+  fmt.Println("Converted scheduled tasks to csv successfully")
+
   converters.ConvertAmcacheToCsv(amcache)
   fmt.Println("Converted amcache to csv successfully")
 
   converters.ConvertMftToCsv(mft)
   fmt.Println("Converted mft to csv successfully")
+
+  converters.ConvertThumbcacheToCsv(thumb)
+  fmt.Println("Converted thumb to csv successfully")
+
+  converters.ConvertUsnJrnlToCsv(usnjrnl)
+  fmt.Println("Converted usnjrnl to csv successfully")
 }
 
 func handleArguments() (string, string, string) {
@@ -90,20 +102,20 @@ func collectArtifacts(kdest string) ([]string, []string, []string, []string, []s
   jumpList := []string{}
   registry := []string{}
   eventLogs := []string{}
-  pageFiles := []string{}
-  hiberFiles := []string{}
-  memoryDumps := []string{}
-  powershellHistory := []string{}
-  browserCache := []string{}
-  browserHistory := []string{}
+  pageFiles := []string{} // https://github.com/volatilityfoundation/volatility , https://github.com/simsong/bulk_extractor
+  hiberFiles := []string{} // HiberfilConverter.exe
+  memoryDumps := []string{} // volatility
+  powershellHistory := []string{} // easy csv as Line,Command or not(?)
+  browserCache := []string{} // TODO?
+  browserHistory := []string{} // TODO?
   scheduledTasks := []string{}
-  hostsFiles := []string{}
+  hostsFiles := []string{} // as linux, is needed a csv for that?
   lnkFiles := []string{}
   recycleBin := []string{}
   usnJrnl := []string{}
   windowsTimeline := []string{}
-  scheduledTaskXMLs := []string{}
-  werFiles := []string{}
+  scheduledTaskXMLs := []string{} // how's the best wat to parse that? They are xml so we can do as we want
+  werFiles := []string{} // same for this, custom convertor?
   thumbcache := []string{}
   bitsJobs := []string{}
   recentLnkFiles := []string{}
