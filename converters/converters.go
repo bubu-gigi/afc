@@ -1,143 +1,132 @@
 package converters
 
 import (
-  "os/exec"
-  "os"
-  "fmt"
-  "afc/utils"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"afc/utils"
 )
 
-func ConvertPfToCsv(pf []string) {
-  peCmd := utils.FindToolExe("PECmd.exe")
+func runZTool(toolName string, inputPath string, outputPath string) error {
+	exe := utils.FindToolExe(toolName)
+	cmd := exec.Command(exe, "-f", inputPath, "--csv", outputPath)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ZTool:%s] Error analyzing %s: %v\n%s\n", toolName, inputPath, err, output)
+		return err
+	}
+	fmt.Printf("[ZTool:%s] Analyzed %s -> %s\n", toolName, inputPath, outputPath)
+	return nil
+}
 
-  for _, pfPath := range pf {
-    outFile := pfPath + ".csv"
-    cmd := exec.Command(peCmd, "-f", pfPath, "--csv", outFile)
-    output, err := cmd.CombinedOutput()
-    if err != nil {
-      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", pfPath, err, output)
-    } else {
-      fmt.Printf("PEcmd analyzed %s -> %s\n", pfPath, outFile)
-    }
-  }
+func runZToolToDir(toolName string, inputPath string, outputDir string) error {
+	exe := utils.FindToolExe(toolName)
+	cmd := exec.Command(exe, "-f", inputPath, "--csv", outputDir)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ZTool:%s] Error analyzing %s: %v\n%s\n", toolName, inputPath, err, output)
+		return err
+	}
+	fmt.Printf("[ZTool:%s] Analyzed %s -> %s\n", toolName, inputPath, outputDir)
+	return nil
+}
+
+func ConvertPfToCsv(pf []string) {
+	for _, path := range pf {
+		runZTool("PECmd.exe", path, path+".csv")
+	}
 }
 
 func ConvertJumpListToCsv(jumpLists []string) {
-  jlCmd := utils.FindToolExe("JLECmd.exe")
-
-  for _, jlPath := range jumpLists {
-    outFile := jlPath + ".csv"
-    cmd := exec.Command(jlCmd, "-f", jlPath, "--csv", outFile)
-    output, err := cmd.CombinedOutput()
-    if err != nil {
-      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", jlPath, err, output)
-    } else {
-      fmt.Printf("JLECmd analyzed %s -> %s\n", jlPath, outFile)
-    }
-  }
+	for _, path := range jumpLists {
+		runZTool("JLECmd.exe", path, path+".csv")
+	}
 }
 
 func ConvertEventLogsToCsv(evtxFiles []string) {
-  evtxCmd := utils.FindToolExe("EvtxECmd.exe")
-
-  for _, evtxPath := range evtxFiles {
-    outFile := evtxPath + ".csv"
-    cmd := exec.Command(evtxCmd, "-f", evtxPath, "--csv", outFile)
-    output, err := cmd.CombinedOutput()
-    if err != nil {
-      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", evtxPath, err, output)
-    } else {
-      fmt.Printf("EvtxECmd analyzed %s -> %s\n", evtxPath, outFile)
-    }
-  }
+	for _, path := range evtxFiles {
+		runZTool("EvtxECmd.exe", path, path+".csv")
+	}
 }
 
 func ConvertLnkFilesToCsv(lnkFiles []string) {
-  leCmd := utils.FindToolExe("LECmd.exe")
-
-  for _, lnkPath := range lnkFiles {
-    outFile := lnkPath + ".csv"
-    cmd := exec.Command(leCmd, "-f", lnkPath, "--csv", outFile)
-    output, err := cmd.CombinedOutput()
-    if err != nil {
-      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", lnkPath, err, output)
-    } else {
-      fmt.Printf("LECmd analyzed %s -> %s\n", lnkPath, outFile)
-    }
-  }
+	for _, path := range lnkFiles {
+		runZTool("LECmd.exe", path, path+".csv")
+	}
 }
 
 func ConvertWindowsTimelineToCsv(timelineFiles []string) {
-  wxtCmd := utils.FindToolExe("WxTCmd.exe")
-
-  for _, timelinePath := range timelineFiles {
-    outFile := timelinePath + ".csv"
-    cmd := exec.Command(wxtCmd, "-f", timelinePath, "--csv", outFile)
-    output, err := cmd.CombinedOutput()
-    if err != nil {
-      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", timelinePath, err, output)
-    } else {
-      fmt.Printf("WxTCmd analyzed %s -> %s\n", timelinePath, outFile)
-    }
-  }
+	for _, path := range timelineFiles {
+		runZTool("WxTCmd.exe", path, path+".csv")
+	}
 }
 
 func ConvertRecycleBinToCsv(recycleBin []string) {
-  rbCmd := utils.FindToolExe("RBCmd.exe")
-
-  for _, rbPath := range recycleBin {
-    outFile := rbPath + ".csv"
-    cmd := exec.Command(rbCmd, "-f", rbPath, "--csv", outFile)
-    output, err := cmd.CombinedOutput()
-    if err != nil {
-      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", rbPath, err, output)
-    } else {
-      fmt.Printf("RBCmd analyzed %s -> %s\n", rbPath, outFile)
-    }
-  }
+	for _, path := range recycleBin {
+		runZTool("RBCmd.exe", path, path+".csv")
+	}
 }
 
 func ConvertSrumToCsv(srumFiles []string) {
-  srumCmd := utils.FindToolExe("SRUMECmd.exe")
-
-  for _, srumPath := range srumFiles {
-    outFile := srumPath + ".csv"
-    cmd := exec.Command(srumCmd, "-f", srumPath, "--csv", outFile)
-    output, err := cmd.CombinedOutput()
-    if err != nil {
-      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", srumPath, err, output)
-    } else {
-      fmt.Printf("SRUMECmd analyzed %s -> %s\n", srumPath, outFile)
-    }
-  }
+	for _, path := range srumFiles {
+		runZTool("SRUMECmd.exe", path, path+".csv")
+	}
 }
 
 func ConvertAmcacheToCsv(amcacheFiles []string) {
-  amcacheCmd := utils.FindToolExe("AmcacheParser.exe")
-
-  for _, amPath := range amcacheFiles {
-    outFile := amPath + ".csv"
-    cmd := exec.Command(amcacheCmd, "-f", amPath, "--csv", outFile)
-    output, err := cmd.CombinedOutput()
-    if err != nil {
-      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", amPath, err, output)
-    } else {
-      fmt.Printf("AmcacheParser analyzed %s -> %s\n", amPath, outFile)
-    }
-  }
+	for _, path := range amcacheFiles {
+		runZTool("AmcacheParser.exe", path, path+".csv")
+	}
 }
 
 func ConvertMftToCsv(mftFiles []string) {
-  mftCmd := utils.FindToolExe("MFTECmd.exe")
+	for _, path := range mftFiles {
+		runZTool("MFTECmd.exe", path, path+".csv")
+	}
+}
 
-  for _, mftPath := range mftFiles {
-    outFile := mftPath + ".csv"
-    cmd := exec.Command(mftCmd, "-f", mftPath, "--csv", outFile)
-    output, err := cmd.CombinedOutput()
-    if err != nil {
-      fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", mftPath, err, output)
-    } else {
-      fmt.Printf("MFTECmd analyzed %s -> %s\n", mftPath, outFile)
-    }
-  }
+func ConvertRegistryToCsv(registryFiles []string) {
+	for _, hive := range registryFiles {
+		outDir := hive + "_recmd_out"
+		runZToolToDir("RECmd.exe", hive, outDir)
+	}
+}
+
+func ConvertScheduledTasksToCsv(taskFiles []string) {
+	for _, task := range taskFiles {
+		runZToolToDir("JobParser.exe", task, filepath.Dir(task))
+	}
+}
+
+func ConvertThumbcacheToCsv(thumbFiles []string) {
+	tcCmd := utils.FindToolExe("ThumbCacheViewer.exe")
+	for _, tcPath := range thumbFiles {
+		outFile := tcPath + ".csv"
+		cmd := exec.Command(tcCmd, "-t", tcPath, "-c", "-o", outFile)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", tcPath, err, output)
+		} else {
+			fmt.Printf("ThumbCacheViewer analyzed %s -> %s\n", tcPath, outFile)
+		}
+	}
+}
+
+func ConvertUsnJrnlToCsv(usnFiles []string) {
+	usnCmd := utils.FindToolExe("UsnJrnl2Csv.exe")
+	for _, usnPath := range usnFiles {
+		outFile := usnPath + ".csv"
+		cmd := exec.Command(usnCmd,
+			"/UsnJrnlFile:"+usnPath,
+			"/OutputPath:"+outFile,
+			"/ScanMode:2",
+		)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error analyzing %s: %v\n%s\n", usnPath, err, output)
+		} else {
+			fmt.Printf("UsnJrnl2Csv analyzed %s -> %s\n", usnPath, outFile)
+		}
+	}
 }
