@@ -87,8 +87,6 @@ func walk(key *regparser.CM_KEY_NODE, path string) {
 			valData,
 		})
 	}
-	fmt.Println(key.Subkeys())
-
 	for _, subkey := range key.Subkeys() {
 		subPath := filepath.Join(path, subkey.Name())
 		walk(subkey, subPath)

