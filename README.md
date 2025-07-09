@@ -1,1 +1,3 @@
-# afc
+# Usage
+```bash 
+go run .
