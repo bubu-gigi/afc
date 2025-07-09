@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf16"
 )
 
@@ -85,4 +86,13 @@ func FormatMapKeys(m map[string]bool) string {
 		}
 	}
 	return strings.Join(result, "; ")
+}
+
+func IsPrintable(s string) bool {
+	for _, r := range s {
+		if !unicode.IsPrint(r) {
+			return false
+		}
+	}
+	return true
 }
