@@ -132,7 +132,7 @@ func collectArtifacts(kdest string) {
 		case strings.HasSuffix(lowerPath, ".lnk"):
 			lnkFiles = append(lnkFiles, path)
 
-		case strings.Contains(lowerPath, "$recycle.bin"):
+		case strings.Contains(lowerPath, "$i"):
 			recycleBin = append(recycleBin, path)
 
 		case strings.Contains(lowerPath, "$usnjrnl"):
@@ -216,11 +216,32 @@ func convert() {
 		fmt.Println("Prefetch converted")
 	}()
 
-  wg.Add(1)
+  	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		converters.ConvertPSHistoryToCsv(powershellHistory)
 		fmt.Println("Powershell History converted")
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		converters.ConvertJobToCsv(scheduledTasks)
+		fmt.Println("Jobs converted")
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		converters.ConvertRecycleBinToCsv(recycleBin)
+		fmt.Println("Recycle Bin converted")
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		converters.ConvertLinkToCsv(lnkFiles)
+		fmt.Println("Link converted")
 	}()
 
 	wg.Wait()
