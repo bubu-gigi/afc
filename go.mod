@@ -24,6 +24,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/spf13/cobra v1.9.1
 	golang.org/x/sys v0.25.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 	www.velocidex.com/golang/evtx v0.2.0
 	www.velocidex.com/golang/go-ntfs v0.2.0
 	www.velocidex.com/golang/go-prefetch v0.0.0-20250529114725-e36ea8a283e2
