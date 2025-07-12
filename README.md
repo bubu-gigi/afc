@@ -52,9 +52,6 @@ wazuh:
   api_endpoint: "https://192.168.1.100:55000/api/v1/ingest"
   token: "xxxxxxxxxx"  
   verify_ssl: false
-```
-
-```yaml
 paths:
   input: "./data"
 ```
