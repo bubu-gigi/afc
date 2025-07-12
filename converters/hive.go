@@ -36,21 +36,21 @@ func convertHive(file string) {
 	f, err = os.Open(file)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
-		os.Exit(1)
+		return
 	}
 	defer f.Close()
 
 	registry, err = regparser.NewRegistry(f)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
-		os.Exit(1)
+		return
 	}
 
 	// check the existence of root key
 	root = registry.OpenKey("")
 	if root == nil {
 		fmt.Println("Error: Root key not found")
-		os.Exit(1)
+		return
 	}
 
 	fileOut := utils.CreateOutputFile(file)

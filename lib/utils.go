@@ -19,7 +19,7 @@ func CreateOutputFile(file string) *os.File {
 	relPath, err := filepath.Rel("./data", file)
 	if err != nil {
 		fmt.Printf("Error resolving relative path: %v\n", err)
-		os.Exit(1)
+		return nil
 	}
 
 	outputPath := filepath.Join("output", relPath)
@@ -29,13 +29,13 @@ func CreateOutputFile(file string) *os.File {
 	outputDir := filepath.Dir(outputPath)
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		fmt.Printf("Error creating output directories: %v\n", err)
-		os.Exit(1)
+		return nil
 	}
 
 	fileCreated, err := os.Create(outputPath)
 	if err != nil {
 		fmt.Printf("Error creating the csv file: %v\n", err)
-		os.Exit(1)
+		return nil
 	}
 
 	return fileCreated

@@ -11,19 +11,23 @@ import (
 	"github.com/Velocidex/ordereddict"
 	"www.velocidex.com/golang/evtx"
 )
-
+/* 
+Steps
+1) Get the chunks of the file (header,offset)         
+2) Foreach chunk get the events (header,event)
+3) Foreach event populate a row and dynamically a list of csv's headers
+*/
 func ConvertEvtxToCsv(files []string) {
 	for _, file := range files {
 		convertEvtx(file)
 	}
 }
-
 func convertEvtx(file string) {
 	// open it
 	f, err := os.Open(file)
 	if err != nil {
 		fmt.Printf("Error opening the file: %v\n", err)
-		os.Exit(1)
+		return
 	}
 	defer f.Close()
 
@@ -86,14 +90,12 @@ func convertEvtx(file string) {
 
 // rec func that dynamically populate a single csv row based on nested object
 func flattenDict(prefix string, d *ordereddict.Dict, out map[string]string) {
-	// iterate for every key of the dictionary
 	for _, key := range d.Keys() {
 		val, _ := d.Get(key)
 		fullKey := key
 		if prefix != "" {
 			fullKey = prefix + "." + key
 		}
-		// check the type whether is a primitive one or not
 		switch v := val.(type) {
 		case *ordereddict.Dict:
 			flattenDict(fullKey, v, out)

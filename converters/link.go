@@ -117,7 +117,7 @@ func readShellLinkHeader(header [76]byte) {
 	shellLink.Header.HeaderSize = binary.LittleEndian.Uint32(header[:4])
 	if shellLink.Header.HeaderSize != 0x0000004C {
 		log.Fatal("link.header -> Error: headerSize wrong")
-		os.Exit(1)
+		return
 	}
 
 	//validate the clsid
@@ -127,7 +127,7 @@ func readShellLinkHeader(header [76]byte) {
 	var expectedCLSID = [16]byte{0x01, 0x14, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}
 	if shellLink.Header.LinkCLSID != expectedCLSID {
 		log.Fatal("link.header -> Error: clsid wrong")
-		os.Exit(1)
+		return
 	}
 
 	//read props

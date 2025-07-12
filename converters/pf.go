@@ -24,7 +24,7 @@ func convertPrefetch(file string) {
 	f, err := os.Open(file)
 	if err != nil {
 		fmt.Println("Error opening the file")
-		os.Exit(1)
+		return
 	}
 	defer f.Close()
 
