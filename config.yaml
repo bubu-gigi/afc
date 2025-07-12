@@ -1,0 +1,10 @@
+wazuh:
+  manager_ip: "192.168.1.100"
+  port: 55000
+  protocol: "http"
+  endpoint: "/api/v1/files"
+  token: "xxxxxxxxxx"  
+  verify_ssl: false
+
+paths:
+  input: "./data"
