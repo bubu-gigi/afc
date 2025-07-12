@@ -102,5 +102,5 @@ go run .
 
 ## 📬 Contact
 
-> 👨‍💻 Author: Guglielmo Borgognoni
-> 🐛 Open issues or feature requests on [GitHub](https://github.com/bubu-gigi/afc/issues)
+👨‍💻 **Author**: Guglielmo Borgognoni  
+🐛 **Issues**: [Open on GitHub](https://github.com/bubu-gigi/afc/issues)
