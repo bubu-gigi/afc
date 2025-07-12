@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -39,13 +40,8 @@ func convertPrefetch(file string) {
 	defer writer.Flush()
 
 	writer.Write([]string{
-		"Executable",
-		"RunCount",
-		"FileSize",
-		"Version",
-		"Hash",
-		"LastRunTimes",
-		"FilesAccessed",
+		"Executable", "RunCount", "FileSize", "Version", "Hash", "LastRunTimes", "FilesAccessed",
+		"PrefetchFilename", "SourceFile", "ParsedAt",
 	})
 
 	writer.Write([]string{
@@ -56,6 +52,9 @@ func convertPrefetch(file string) {
 		fmt.Sprintf("%08X", pf.Hash),
 		formatRunTimes(pf.LastRunTimes),
 		strings.Join(pf.FilesAccessed, "|"),
+		filepath.Base(file),
+		file,
+		time.Now().Format(time.RFC3339),
 	})
 }
 
