@@ -72,7 +72,7 @@ cd afc
 2. Place the forensic data inside the `./data/` directory.  
    You can paste the full folder structure exported by tools like **KAPE** or others.
 
-3. (Optional) Add your `config.yaml` file to enable uploads or customize behavior.
+3. (Optional) Add your `config.yaml` file to customize behavior.
 
 4. Run the tool:
 
@@ -80,30 +80,8 @@ cd afc
 go run .
 ```
 
-5. The resulting CSV files will be written into `./output/`, preserving the original subdirectory structure.
+5. The resulting CSV will be saved temp in memory and as soon as possible send to the given wazuh endpoint.
 
----
-
-## 📝 Output
-
-For each recognized artifact, AFC creates a corresponding `.csv` file:
-
-```
-output/
-├── C/Users/john/NTUSER.DAT.csv
-├── C/Windows/System32/config/SYSTEM.csv
-├── C/Windows/Prefetch/APP.EXE.pf.csv
-├── ...
-```
-
-These files contain structured and clean data, suitable for:
-
-- Excel imports
-- SIEM ingestion
-- Splunk / ELK analysis
-- Manual correlation or triage
-
----
 
 ## 🤖 Requirements
 
