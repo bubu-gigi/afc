@@ -1,9 +1,9 @@
 package converters
 
 import (
+	"afc/config"
 	utils "afc/lib"
 	"context"
-	"encoding/csv"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,13 +13,12 @@ import (
 	"www.velocidex.com/golang/go-ntfs/parser"
 )
 
-func ConvertMFTToCsv(files []string) {
+func ConvertMFTToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		convertMFT(file)
+		convertMFT(file, config)
 	}
 }
-
-func convertMFT(file string) {
+func convertMFT(file string, config *config.Config) {
 	f, err := os.Open(file)
 	if err != nil {
 		fmt.Printf("Errore apertura file: %v\n", err)
@@ -30,13 +29,7 @@ func convertMFT(file string) {
 	stat, _ := f.Stat()
 	size := stat.Size()
 
-	outFile := utils.CreateOutputFile(file)
-	defer outFile.Close()
-	writer := csv.NewWriter(outFile)
-	defer writer.Flush()
-
-	// Header
-	writer.Write([]string{
+	headers := []string{
 		"EntryNumber", "SequenceNumber", "InUse",
 		"ParentEntryNumber", "ParentSequenceNumber", "ParentPath",
 		"FileName", "Extension", "FileSize", "ReferenceCount",
@@ -46,7 +39,9 @@ func convertMFT(file string) {
 		"LastRecordChange0x10", "LastRecordChange0x30",
 		"LastAccess0x10", "LastAccess0x30",
 		"LogfileSequenceNumber",
-	})
+	}
+
+	var rows [][]string
 
 	ctx := context.Background()
 	stream := parser.ParseMFTFile(ctx, f, size, 4096, 1024)
@@ -57,16 +52,14 @@ func convertMFT(file string) {
 		}
 
 		fileName := ""
-		nameType := ""
 		if len(row.FileNames) > 0 {
 			fileName = row.FileNames[len(row.FileNames)-1]
 		}
-		nameType = row.FileNameTypes()
-
+		nameType := row.FileNameTypes()
 		isAds := strings.Contains(fileName, ":") && !row.IsDir
 		extension := filepath.Ext(fileName)
 
-		writer.Write([]string{
+		rows = append(rows, []string{
 			fmt.Sprintf("%d", row.EntryNumber),
 			fmt.Sprintf("%d", row.SequenceNumber),
 			fmt.Sprintf("%v", row.InUse),
@@ -96,7 +89,17 @@ func convertMFT(file string) {
 			fmt.Sprintf("%d", row.LogFileSeqNum),
 		})
 	}
+
+	if len(rows) == 0 {
+		fmt.Printf("Nessuna riga da inviare per file: %s\n", file)
+		return
+	}
+
+	if err := utils.SendCsvToWazuh(config, headers, rows); err != nil {
+		fmt.Printf("Errore invio CSV a Wazuh per %s: %v\n", file, err)
+	}
 }
+
 
 func formatTime(t time.Time) string {
 	if t.IsZero() {

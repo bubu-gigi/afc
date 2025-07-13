@@ -1,23 +1,22 @@
 package converters
 
 import (
+	"afc/config"
 	utils "afc/lib"
-	"encoding/csv"
 	"encoding/xml"
 	"fmt"
 	"os"
 )
 
-func ConvertTaskXmlToCsv(files []string) {
+func ConvertTaskXmlToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		err := convertTaskXml(file)
+		err := convertTaskXml(file, config)
 		if err != nil {
 			fmt.Printf("Errore nel file %s: %v\n", file, err)
 		}
 	}
 }
-
-func convertTaskXml(file string) error {
+func convertTaskXml(file string, config *config.Config) error {
 	xmlFile, err := os.Open(file)
 	if err != nil {
 		return fmt.Errorf("errore apertura file: %w", err)
@@ -31,16 +30,10 @@ func convertTaskXml(file string) error {
 		return fmt.Errorf("errore parsing XML: %w", err)
 	}
 
-	fileOut := utils.CreateOutputFile(file)
-	defer fileOut.Close()
-
-	writer := csv.NewWriter(fileOut)
-	defer writer.Flush()
-
-	writer.Write([]string{
+	headers := []string{
 		"File", "Author", "UserID", "LogonType",
 		"Command", "Arguments", "TriggerStart", "TriggerEnabled",
-	})
+	}
 
 	principal := ""
 	logon := ""
@@ -63,7 +56,7 @@ func convertTaskXml(file string) error {
 		triggerEnabled = task.Triggers.TimeTrigger[0].Enabled
 	}
 
-	writer.Write([]string{
+	record := []string{
 		file,
 		task.Registration.Author,
 		principal,
@@ -72,7 +65,12 @@ func convertTaskXml(file string) error {
 		args,
 		triggerStart,
 		triggerEnabled,
-	})
+	}
+
+	err = utils.SendCsvToWazuh(config, headers, [][]string{record})
+	if err != nil {
+		return fmt.Errorf("errore invio Wazuh: %w", err)
+	}
 
 	return nil
 }

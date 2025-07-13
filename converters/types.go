@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+//LINK 
+
 type ShellLinkHeader struct {
 	HeaderSize     uint32
 	LinkCLSID      [16]byte
@@ -211,4 +213,19 @@ var ReasonFlags = map[uint32]string{
 	0x00100000: "ReparsePointChange",
 	0x00200000: "StreamChange",
 	0x80000000: "Close",
+}
+
+type Config struct {
+	Wazuh struct {
+		ManagerIP  string `yaml:"manager_ip"`
+		Port       int    `yaml:"port"`
+		Protocol   string `yaml:"protocol"`
+		Endpoint   string `yaml:"endpoint"`
+		Token      string `yaml:"token"`
+		VerifySSL  bool   `yaml:"verify_ssl"`
+	} `yaml:"wazuh"`
+
+	Paths struct {
+		Input  string `yaml:"input"`
+	} `yaml:"paths"`
 }

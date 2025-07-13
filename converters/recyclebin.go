@@ -1,6 +1,7 @@
 package converters
 
 import (
+	"afc/config"
 	utils "afc/lib"
 	"encoding/binary"
 	"encoding/csv"
@@ -30,8 +31,7 @@ type Info2Entry struct {
 	FileSize      uint32
 }
 
-// Entry point
-func ConvertRecycleBinToCsv(files []string) {
+func ConvertRecycleBinToCsv(files []string, config *config.Config) {
 	for _, file := range files {
 		switch {
 		case strings.HasPrefix(filepath.Base(file), "$I"):

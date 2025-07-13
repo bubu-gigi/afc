@@ -1,169 +1,150 @@
 package converters
 
 import (
+	"afc/config"
 	utils "afc/lib"
 	"encoding/binary"
-	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	regparser "www.velocidex.com/golang/regparser"
 )
 
-var (
-	f        *os.File
-	registry *regparser.Registry
-	err      error
-	writer   *csv.Writer
-	root     *regparser.CM_KEY_NODE
-	visited = make(map[string]bool)
-)
-
-func ConvertRegistryHiveToCsv(files []string) {
+func ConvertRegistryHiveToCsv(files []string, cfg *config.Config) {
 	for _, file := range files {
-		convertHive(file)
+		if err := convertHive(file, cfg); err != nil {
+			log.Printf("hive|Error processing file %s: %v", file, err)
+		}
 	}
 }
 
-// a registry hive file is a file with a root key and multiple subkeys as a generic tree
-// they follow the format REGF and start with 4096 byte with file's info
-func convertHive(file string) {
-
-	f, err = os.Open(file)
+func convertHive(file string, cfg *config.Config) error {
+	f, err := os.Open(file)
 	if err != nil {
-		fmt.Printf("Error: %v", err)
-		return
+		return fmt.Errorf("hive|error opening file: %w", err)
 	}
 	defer f.Close()
 
-	registry, err = regparser.NewRegistry(f)
+	registry, err := regparser.NewRegistry(f)
 	if err != nil {
-		fmt.Printf("Error: %v", err)
-		return
+		return fmt.Errorf("hive|error parsing hive: %w", err)
 	}
 
-	// check the existence of root key
-	root = registry.OpenKey("")
+	root := registry.OpenKey("")
 	if root == nil {
-		fmt.Println("Error: Root key not found")
-		return
+		return fmt.Errorf("hive|root key not found")
 	}
 
-	fileOut := utils.CreateOutputFile(file)
-	defer fileOut.Close()
+	headers := []string{"Path", "LastWrite", "Name", "Type", "Value"}
+	var rows [][]string
+	visited := make(map[string]bool)
 
-	writer = csv.NewWriter(fileOut)
-	defer writer.Flush()
+	var walk func(*regparser.CM_KEY_NODE, string)
+	walk = func(key *regparser.CM_KEY_NODE, path string) {
+		if visited[path] {
+			return
+		}
+		visited[path] = true
+		lastWrite := key.LastWriteTime().UTC().Format(time.RFC3339)
 
-	writer.Write([]string{"Path", "LastWrite", "Name", "Type", "Value"})
-	walk(root, `\`)
-}
-
-func walk(key *regparser.CM_KEY_NODE, path string) {
-	if visited[path] {
-		return
-	}
-	visited[path] = true
-	lastWrite := key.LastWriteTime().UTC().Format(time.RFC3339)
-
-	for _, value := range key.Values() {
-		name := value.Name()
-		if name == "" {
-			name = "(default)"
+		for _, value := range key.Values() {
+			name := value.Name()
+			if name == "" {
+				name = "(default)"
+			}
+			valType := regTypeString(value.Type())
+			valData, err := getValueData(value, f)
+			if err != nil {
+				log.Printf("hive|Error reading data in file %s (key: %s.%s): %v", file, path, name, err)
+				continue
+			}
+			rows = append(rows, []string{
+				path,
+				lastWrite,
+				name,
+				valType,
+				valData,
+			})
 		}
 
-		valType := regTypeString(value.Type())
-		valData := getValueData(value, f)
+		for _, subkey := range key.Subkeys() {
+			subPath := path + `\` + subkey.Name()
+			walk(subkey, subPath)
+		}
+	}
 
-		writer.Write([]string{
-			path,
-			lastWrite,
-			name,
-			valType,
-			valData,
-		})
+	walk(root, `\`)
+
+	if err := utils.SendCsvToWazuh(cfg, headers, rows); err != nil {
+		return fmt.Errorf("hive|error sending to Wazuh: %w", err)
 	}
-	for _, subkey := range key.Subkeys() {
-		subPath := filepath.Join(path, subkey.Name())
-		walk(subkey, subPath)
-	}
+
+	return nil
 }
 
-func getValueData(val *regparser.CM_KEY_VALUE, reader io.ReaderAt) string {
+func getValueData(val *regparser.CM_KEY_VALUE, reader io.ReaderAt) (string, error) {
 	dataOffset := int64(val.Data())
 	dataLength := val.DataLength()
 	dataType := val.Type()
 
 	buf := make([]byte, dataLength)
-	_, err := reader.ReadAt(buf, dataOffset+0x1000) // add base hive's offset 
+	_, err := reader.ReadAt(buf, dataOffset+0x1000)
 	if err != nil {
-		return fmt.Sprintf("Error reading: %v", err)
+		return "", err
 	}
 
 	switch dataType {
-	case 1: // REG_SZ o REG_EXPAND_SZ
-		return regparser.UTF16BytesToUTF8(buf, binary.LittleEndian)
-
+	case 1:
+		return regparser.UTF16BytesToUTF8(buf, binary.LittleEndian), nil
 	case 2:
-		value := regparser.UTF16BytesToUTF8(buf, binary.LittleEndian)
-		// we try to replace the name of the env var with the actual value
-		// we must be in the system
-		expanded := os.ExpandEnv(value)
+		val := regparser.UTF16BytesToUTF8(buf, binary.LittleEndian)
+		expanded := os.ExpandEnv(val)
 		if expanded == "" {
-			return value + "VNF" // ValueNotFound
-		} else {
-			return expanded 
+			return val + "VNF", nil
 		}
-
-	case 3: // REG_BINARY
-		return fmt.Sprintf("%X", buf)
-
-	case 4: // REG_DWORD
+		return expanded, nil
+	case 3:
+		return strings.ToUpper(fmt.Sprintf("%X", buf)), nil
+	case 4:
 		if len(buf) >= 4 {
-			return fmt.Sprintf("%d", binary.LittleEndian.Uint32(buf))
+			return fmt.Sprintf("%d", binary.LittleEndian.Uint32(buf)), nil
 		}
-
-	case 11: // REG_QWORD
+	case 11:
 		if len(buf) >= 8 {
-			return fmt.Sprintf("%d", binary.LittleEndian.Uint64(buf))
+			return fmt.Sprintf("%d", binary.LittleEndian.Uint64(buf)), nil
 		}
-
-	case 7: // REG_MULTI_SZ
+	case 7:
 		str := regparser.UTF16BytesToUTF8(buf, binary.LittleEndian)
-		return strings.Join(strings.Split(str, "\x00"), "|")
-
+		return strings.Join(strings.Split(str, "\x00"), "|"), nil
 	default:
-		return fmt.Sprintf("Type not handled (%d): %X", dataType, buf)
+		return fmt.Sprintf("Type not handled (%d): %X", dataType, buf), nil
 	}
-	return ""
+	return "", nil
 }
 
 func regTypeString(typ uint32) string {
 	switch typ {
 	case 1:
-		return "REG_SZ" // A null-terminated string. It's either a Unicode or an ANSI string.
+		return "REG_SZ"
 	case 2:
-		return "REG_EXPAND_SZ" // A null-terminated string that contains unexpanded references to environment variables, for example, %PATH%. It's either a Unicode or an ANSI string.
+		return "REG_EXPAND_SZ"
 	case 3:
-		return "REG_BINARY" // Binary data in any form.
+		return "REG_BINARY"
 	case 4:
-		return "REG_DWORD" // A 32-bit number.
+		return "REG_DWORD"
 	case 5:
-		return "REG_DWORD_BIG_ENDIAN" // A 32-bit number in little-endian format
+		return "REG_DWORD_BIG_ENDIAN"
 	case 6:
-		return "REG_LINK" // A null-terminated Unicode string that contains the target path of a symbolic link that was created by calling the RegCreateKeyEx function with REG_OPTION_CREATE_LINK.
+		return "REG_LINK"
 	case 7:
-		return "REG_MULTI_SZ" // A sequence of null-terminated strings, terminated by an empty string (\0). 
+		return "REG_MULTI_SZ"
 	case 11:
-		return "REG_QWORD" // A 64-bit number.
+		return "REG_QWORD"
 	default:
 		return fmt.Sprintf("UNKNOWN (%d)", typ)
 	}
 }
-
-
-// https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-value-types

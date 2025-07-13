@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"os"
@@ -21,7 +21,7 @@ type Config struct {
 }
 
 
-func loadConfig(path string) (*Config, error) {
+func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err

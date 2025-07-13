@@ -1,8 +1,8 @@
 package converters
 
 import (
+	"afc/config"
 	utils "afc/lib"
-	"encoding/csv"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,38 +13,32 @@ import (
 )
 
 
-func ConvertPrefetchToCsv(files []string) {
+func ConvertPrefetchToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		convertPrefetch(file)
+		convertPrefetch(file, config)
 	}
 }
 
-func convertPrefetch(file string) {
-	var f *os.File
+func convertPrefetch(file string, config *config.Config) {
 	f, err := os.Open(file)
 	if err != nil {
-		fmt.Println("Error opening the file")
+		fmt.Printf("prefetch|Error opening file %s: %v\n", file, err)
 		return
 	}
 	defer f.Close()
 
 	pf, err := prefetch.LoadPrefetch(f)
 	if err != nil {
-		panic(err)
+		fmt.Printf("prefetch|Error parsing file %s: %v\n", file, err)
+		return
 	}
 
-	fileOut := utils.CreateOutputFile(file)
-	defer fileOut.Close()
-
-	writer := csv.NewWriter(fileOut)
-	defer writer.Flush()
-
-	writer.Write([]string{
+	headers := []string{
 		"Executable", "RunCount", "FileSize", "Version", "Hash", "LastRunTimes", "FilesAccessed",
 		"PrefetchFilename", "SourceFile", "ParsedAt",
-	})
+	}
 
-	writer.Write([]string{
+	row := []string{
 		pf.Executable,
 		fmt.Sprint(pf.RunCount),
 		fmt.Sprint(pf.FileSize),
@@ -55,8 +49,14 @@ func convertPrefetch(file string) {
 		filepath.Base(file),
 		file,
 		time.Now().Format(time.RFC3339),
-	})
+	}
+
+	err = utils.SendCsvToWazuh(config, headers, [][]string{row})
+	if err != nil {
+		fmt.Printf("prefetch|Error sending CSV to Wazuh for file %s: %v\n", file, err)
+	}
 }
+
 
 func formatRunTimes(times []time.Time) string {
 	var result []string

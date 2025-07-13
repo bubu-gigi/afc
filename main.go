@@ -1,6 +1,7 @@
 package main
 
 import (
+	"afc/config"
 	"afc/converters"
 	"fmt"
 	"os"
@@ -56,7 +57,7 @@ func main() {
 
 func run() {
 
-	cfg, err := loadConfig("config.yaml")
+	cfg, err := config.Load("config.yaml")
 	if err != nil {
 		fmt.Println("Errore loading config:", err)
 		os.Exit(1)
@@ -66,7 +67,7 @@ func run() {
 
 	collectArtifacts(cfg.Paths.Input)
 
-	convert()
+	convert(cfg)
 
 	/*converters.ConvertJumpListToCsv(jl)
 	converters.ConvertLnkFilesToCsv(lnk)
@@ -173,69 +174,69 @@ func collectArtifacts(kdest string) {
 	})
 }
 
-func convert() {
+func convert(cfg *config.Config) {
 	var wg sync.WaitGroup
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		converters.ConvertEvtxToCsv(evtx)
+		converters.ConvertEvtxToCsv(evtx, cfg)
 		fmt.Println("Evtx converted")
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		converters.ConvertRegistryHiveToCsv(registry)
+		converters.ConvertRegistryHiveToCsv(registry, cfg)
 		fmt.Println("Registry converted")
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		converters.ConvertMFTToCsv(mft)
+		converters.ConvertMFTToCsv(mft, cfg)
 		fmt.Println("MFT converted")
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		converters.ConvertPrefetchToCsv(prefetch)
+		converters.ConvertPrefetchToCsv(prefetch, cfg)
 		fmt.Println("Prefetch converted")
 	}()
 
   	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		converters.ConvertPSHistoryToCsv(powershellHistory)
+		converters.ConvertPSHistoryToCsv(powershellHistory, cfg)
 		fmt.Println("Powershell History converted")
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		converters.ConvertTaskJobToCsv(scheduledTasks)
+		converters.ConvertTaskJobToCsv(scheduledTasks, cfg)
 		fmt.Println("Task Jobs converted")
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		converters.ConvertTaskXmlToCsv(scheduledTasks)
+		converters.ConvertTaskXmlToCsv(scheduledTasks, cfg)
 		fmt.Println("Task Xml converted")
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		converters.ConvertRecycleBinToCsv(recycleBin)
+		converters.ConvertRecycleBinToCsv(recycleBin, cfg)
 		fmt.Println("Recycle Bin converted")
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		converters.ConvertLinkToCsv(lnkFiles)
+		converters.ConvertLinkToCsv(lnkFiles, cfg)
 		fmt.Println("Link converted")
 	}()
 

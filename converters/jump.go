@@ -1,11 +1,13 @@
 package converters
 
-func ConvertJumpToCsv(files []string) {
+import "afc/config"
+
+func ConvertJumpToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		convertJump(file)
+		convertJump(file, config)
 	}
 }
 
-func convertJump(file string) {
+func convertJump(file string, config *config.Config) {
 
 }

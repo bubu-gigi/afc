@@ -1,9 +1,9 @@
 package converters
 
 import (
+	"afc/config"
 	utils "afc/lib"
 	"encoding/binary"
-	"encoding/csv"
 	"fmt"
 	"io"
 	"log"
@@ -21,12 +21,12 @@ var (
 	parsedItems 		[]string
 )
 
-func ConvertLinkToCsv(files []string) {
+func ConvertLinkToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		convertLink(file)
+		convertLink(file, config)
 	}
 }
-func convertLink(file string) error {
+func convertLink(file string, config *config.Config) error {
 	var header [76]byte
 
 	f, err := os.Open(file)
@@ -39,7 +39,6 @@ func convertLink(file string) error {
 	if err != nil {
 		return fmt.Errorf("failed to read shell link header: %w", err)
 	}
-
 	readShellLinkHeader(header)
 
 	if linkFlags["HasLinkTargetIDList"] {
@@ -63,20 +62,12 @@ func convertLink(file string) error {
 	readStringData(f)
 	readExtraData(f)
 
-	fileOut := utils.CreateOutputFile(file) 
-	defer fileOut.Close()
-
-	writer := csv.NewWriter(fileOut) 
-	defer writer.Flush()
-
 	headers := []string{
 		"File", "CreationTime", "AccessTime", "WriteTime", "FileSize", "IconIndex", "ShowCommand", "HotKey",
 		"Flags", "FileAttributes", "RelativePath", "WorkingDirectory", "CommandLineArguments", "IconLocation", "NameString",
 		"LocalBasePath", "CommonPathSuffix", "VolumeLabel", "DriveType", "DriveSerialNumber", "ItemIdListReadable",
 		"NetName", "DeviceName", "NetworkProviderType", "CommonNetworkRelativeLinkFlags",
 	}
-	writer.Write(headers)
-	writer.UseCRLF = true
 
 	record := []string{
 		file,
@@ -106,7 +97,10 @@ func convertLink(file string) error {
 		fmt.Sprintf("0x%08X", shellLink.LinkInfo.CommonNetworkRelativeLink.CommonNetworkRelativeLinkFlags),
 	}
 
-	writer.Write(record)
+	rows := [][]string{record}
+	if err := utils.SendCsvToWazuh(config, headers, rows); err != nil {
+		return fmt.Errorf("failed to send .lnk CSV to Wazuh: %w", err)
+	}
 
 	return nil
 }

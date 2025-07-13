@@ -1,40 +1,47 @@
 package converters
 
 import (
+	"afc/config"
 	utils "afc/lib"
 	"bufio"
-	"encoding/csv"
 	"fmt"
 	"os"
 )
 
-func ConvertPSHistoryToCsv(files []string) {
+func ConvertPSHistoryToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		convertPSHistory(file)
+		convertPSHistory(file, config)
 	}
 }
 
-func convertPSHistory(file string) {
+func convertPSHistory(file string, config *config.Config) {
 	f, err := os.Open(file)
 	if err != nil {
-		fmt.Println("Error opening the file powershellHistory")
+		fmt.Printf("powershell|Error opening file %s: %v\n", file, err)
 		return
 	}
 	defer f.Close()
 
-	output := utils.CreateOutputFile(file)
-	defer output.Close()
-	writer := csv.NewWriter(output)
-	defer writer.Flush()
-	writer.Write([]string{"LineNumber", "Command"})
+	headers := []string{"LineNumber", "Command"}
+	var rows [][]string
 
 	scanner := bufio.NewScanner(f)
 	lineNum := 1
 	for scanner.Scan() {
-		writer.Write([]string{
+		rows = append(rows, []string{
 			fmt.Sprintf("%d", lineNum),
 			scanner.Text(),
 		})
 		lineNum++
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Printf("powershell|Error scanning file %s: %v\n", file, err)
+		return
+	}
+
+	err = utils.SendCsvToWazuh(config, headers, rows)
+	if err != nil {
+		fmt.Printf("powershell|Error sending CSV to Wazuh for file %s: %v\n", file, err)
 	}
 }

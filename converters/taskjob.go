@@ -3,58 +3,56 @@ package converters
 //https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-tsch/96446df7-7683-40e0-a713-b01933b93b18
 
 import (
+	"afc/config"
 	utils "afc/lib"
 	"encoding/binary"
-	"encoding/csv"
 	"fmt"
 	"os"
 	"strings"
 )
 
 
-func ConvertTaskJobToCsv(files []string) {
+func ConvertTaskJobToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		convertTaskJob(file)
+		convertTaskJob(file, config)
 	}
 }
-
-func convertTaskJob(file string) error {
+func convertTaskJob(file string, config *config.Config) {
 	f, err := os.Open(file)
 	if err != nil {
-		return err
+		fmt.Printf("Error reading: %v", err)
+		return
 	}
 	defer f.Close()
 
 	header := &JobHeader{}
 	err = readHeader(f, header)
 	if err != nil {
-		return err
+		fmt.Printf("Error reading: %v", err)
+		return
 	}
 
 	instanceCount, appName, params, workingDir, author, comment, userData, reservedData, err := readDataSection(f)
 	if err != nil {
-		return err
+		fmt.Printf("Error reading: %v", err)
+		return
 	}
 
 	triggers, err := readTriggers(f)
 	if err != nil {
-		return err
+		fmt.Printf("Error reading: %v", err)
+		return
 	}
 
-	fileOut := utils.CreateOutputFile(file)
-	defer fileOut.Close()
-
-	writer := csv.NewWriter(fileOut)
-	defer writer.Flush()
-
-	writer.Write([]string{
+	// Intestazioni e record principale
+	headers := []string{
 		"ProductVersion", "FormatVersion", "AppNameOffset", "TriggerOffset",
 		"ErrorRetryCount", "ErrorRetryInterval", "IdleDeadline", "IdleWait", "Priority", "MaxRunTime",
 		"RunningInstanceCount", "ApplicationName", "Parameters", "WorkingDirectory", "Author", "Comment",
 		"UserData", "ReservedData", "TriggerCount",
-	})
+	}
 
-	writer.Write([]string{
+	record := []string{
 		fmt.Sprintf("%d", header.ProductVersion),
 		fmt.Sprintf("%d", header.FileVersion),
 		fmt.Sprintf("0x%X", header.AppNameOffset),
@@ -74,31 +72,30 @@ func convertTaskJob(file string) error {
 		string(userData),
 		fmt.Sprintf("%x", reservedData),
 		fmt.Sprintf("%d", len(triggers)),
-	})
-
-	triggerOut, err := createTriggerOutputFile(file)
-	if err != nil {
-		return err
 	}
-	defer triggerOut.Close()
 
-	triggerWriter := csv.NewWriter(triggerOut)
-	defer triggerWriter.Flush()
+	err = utils.SendCsvToWazuh(config, headers, [][]string{record})
+	if err != nil {
+		fmt.Printf("wazuh|Error sending job header to Wazuh: %v\n", err)
+		return
+	}
 
-	triggerWriter.Write([]string{
+	// Triggers
+	triggerHeaders := []string{
 		"Index", "BeginDate", "EndDate", "StartTime", "DurationMin", "IntervalMin",
 		"Flags", "TriggerType", "TriggerSpecific0", "TriggerSpecific1", "TriggerSpecific2",
-	})
+	}
 
+	var triggerRows [][]string
 	for i, t := range triggers {
 		begin := fmt.Sprintf("%04d-%02d-%02d", t.BeginYear, t.BeginMonth, t.BeginDay)
 		end := ""
-		if t.Flags&0x1 != 0 { 
+		if t.Flags&0x1 != 0 {
 			end = fmt.Sprintf("%04d-%02d-%02d", t.EndYear, t.EndMonth, t.EndDay)
 		}
 		start := fmt.Sprintf("%02d:%02d", t.StartHour, t.StartMinute)
 
-		triggerWriter.Write([]string{
+		triggerRows = append(triggerRows, []string{
 			fmt.Sprintf("%d", i+1),
 			begin,
 			end,
@@ -113,8 +110,12 @@ func convertTaskJob(file string) error {
 		})
 	}
 
-	return nil
+	err = utils.SendCsvToWazuh(config, triggerHeaders, triggerRows)
+	if err != nil {
+		fmt.Printf("wazuh|Error sending job triggers to Wazuh: %v\n", err)
+	}
 }
+
 
 func readHeader(file *os.File, header *JobHeader) error {
 	return binary.Read(file, binary.LittleEndian, header)

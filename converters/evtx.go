@@ -1,9 +1,10 @@
 package converters
 
 import (
-	"afc/lib"
-	"encoding/csv"
+	"afc/config"
+	utils "afc/lib"
 	"fmt"
+	"log"
 	"os"
 	"sort"
 	"strings"
@@ -11,47 +12,48 @@ import (
 	"github.com/Velocidex/ordereddict"
 	"www.velocidex.com/golang/evtx"
 )
-/* 
-Steps
-1) Get the chunks of the file (header,offset)         
-2) Foreach chunk get the events (header,event)
-3) Foreach event populate a row and dynamically a list of csv's headers
-*/
-func ConvertEvtxToCsv(files []string) {
+
+func ConvertEvtxToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		convertEvtx(file)
+		if err := convertEvtx(file, config); err != nil {
+			log.Printf("evtx|Error converting file %s: %v", file, err)
+		}
 	}
 }
-func convertEvtx(file string) {
-	// open it
+
+func convertEvtx(file string, config *config.Config) error {
 	f, err := os.Open(file)
 	if err != nil {
-		fmt.Printf("Error opening the file: %v\n", err)
-		return
+		return fmt.Errorf("evtx|Error opening file %s: %w", file, err)
 	}
 	defer f.Close()
 
-	// we get chunks of the file
-	var chunks []*evtx.Chunk;
-	chunks, _ = evtx.GetChunks(f)
-	// map with k-v string
+	chunks, err := evtx.GetChunks(f)
+	if err != nil {
+		return fmt.Errorf("evtx|Error getting chunks from file %s: %w", file, err)
+	}
+
 	var flattenedRecords []map[string]string
-	// unique set for the headers of csv
 	fieldSet := make(map[string]bool)
-	// iterate over a single chunk
+
 	for _, chunk := range chunks {
-		// list of events
-		var events []*evtx.EventRecord
-		events, _ = chunk.Parse(0)
-		// iterate over events
+		events, err := chunk.Parse(0)
+		if err != nil {
+			log.Printf("evtx|Error parsing chunk in file %s: %v", file, err)
+			continue
+		}
+
 		for _, event := range events {
-			// get a single event and map it to a Dict
-			dict := event.Event.(*ordereddict.Dict)
-			// new map
+			dict, ok := event.Event.(*ordereddict.Dict)
+			if !ok {
+				log.Printf("evtx|Unexpected event type in file %s: %T", file, event.Event)
+				continue
+			}
+
 			row := make(map[string]string)
 			flattenDict("", dict, row)
 			flattenedRecords = append(flattenedRecords, row)
-			// populate the headers
+
 			for k := range row {
 				fieldSet[k] = true
 			}
@@ -64,31 +66,31 @@ func convertEvtx(file string) {
 	}
 	sort.Strings(fullKeys)
 
-	// populate the csv headers
+	// Headers semplificati
 	shortHeaders := make([]string, len(fullKeys))
 	for i, full := range fullKeys {
 		parts := strings.Split(full, ".")
 		shortHeaders[i] = parts[len(parts)-1]
 	}
-	// open the output file
-	fileOut := utils.CreateOutputFile(file)
-	defer fileOut.Close()
-	
-	writer := csv.NewWriter(fileOut)
-	defer writer.Flush()
-	// put the headers
-	writer.Write(shortHeaders)
 
+	// Prepara i dati da inviare
+	var allRows [][]string
 	for _, record := range flattenedRecords {
 		var row []string
 		for _, full := range fullKeys {
 			row = append(row, record[full])
 		}
-		writer.Write(row)
+		allRows = append(allRows, row)
 	}
+
+	err = utils.SendCsvToWazuh(config, shortHeaders, allRows)
+	if err != nil {
+		return fmt.Errorf("evtx|error sending CSV to Wazuh: %w", err)
+	}
+
+	return nil
 }
 
-// rec func that dynamically populate a single csv row based on nested object
 func flattenDict(prefix string, d *ordereddict.Dict, out map[string]string) {
 	for _, key := range d.Keys() {
 		val, _ := d.Get(key)
@@ -104,4 +106,3 @@ func flattenDict(prefix string, d *ordereddict.Dict, out map[string]string) {
 		}
 	}
 }
-
