@@ -5,20 +5,22 @@ import (
 	utils "afc/lib"
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 )
 
 func ConvertPSHistoryToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		convertPSHistory(file, config)
+		if err := convertPSHistory(file, config); err != nil {
+			log.Printf("powershell: failed to convert file %s: %v", file, err)
+		}
 	}
 }
 
-func convertPSHistory(file string, config *config.Config) {
+func convertPSHistory(file string, config *config.Config) error {
 	f, err := os.Open(file)
 	if err != nil {
-		fmt.Printf("powershell|Error opening file %s: %v\n", file, err)
-		return
+		return fmt.Errorf("open error: %w", err)
 	}
 	defer f.Close()
 
@@ -36,12 +38,12 @@ func convertPSHistory(file string, config *config.Config) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		fmt.Printf("powershell|Error scanning file %s: %v\n", file, err)
-		return
+		return fmt.Errorf("scan error: %w", err)
 	}
 
-	err = utils.SendCsvToWazuh(config, headers, rows)
-	if err != nil {
-		fmt.Printf("powershell|Error sending CSV to Wazuh for file %s: %v\n", file, err)
+	if err := utils.SendCsvToWazuh(config, headers, rows); err != nil {
+		return fmt.Errorf("send to Wazuh failed: %w", err)
 	}
+
+	return nil
 }

@@ -13,33 +13,37 @@ import (
 )
 
 var (
-	shellLink ShellLink
-    linkFlags          	map[string]bool
-	fileAttributesFlags map[string]bool
-	hotKeyLowByte      	string
-	hotKeyHighByte      string
-	parsedItems 		[]string
+	shellLink            ShellLink
+	linkFlags            map[string]bool
+	fileAttributesFlags  map[string]bool
+	hotKeyLowByte        string
+	hotKeyHighByte       string
+	parsedItems          []string
 )
 
 func ConvertLinkToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		convertLink(file, config)
+		if err := convertLink(file, config); err != nil {
+			log.Printf("[ERROR] Failed to convert LNK file %s: %v", file, err)
+		}
 	}
 }
+
 func convertLink(file string, config *config.Config) error {
 	var header [76]byte
 
 	f, err := os.Open(file)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot open LNK file: %w", err)
 	}
 	defer f.Close()
 
-	_, err = io.ReadFull(f, header[:])
-	if err != nil {
+	if _, err = io.ReadFull(f, header[:]); err != nil {
 		return fmt.Errorf("failed to read shell link header: %w", err)
 	}
-	readShellLinkHeader(header)
+	if err := readShellLinkHeader(header); err != nil {
+		return err
+	}
 
 	if linkFlags["HasLinkTargetIDList"] {
 		linkTargetIdList := readLinkTargetIDList(f)
@@ -102,29 +106,23 @@ func convertLink(file string, config *config.Config) error {
 		return fmt.Errorf("failed to send .lnk CSV to Wazuh: %w", err)
 	}
 
+	log.Printf("[INFO] Converted LNK file %s", file)
 	return nil
 }
 
-
-func readShellLinkHeader(header [76]byte) {
-	//validate the header size to be 76
+func readShellLinkHeader(header [76]byte) error {
 	shellLink.Header.HeaderSize = binary.LittleEndian.Uint32(header[:4])
 	if shellLink.Header.HeaderSize != 0x0000004C {
-		log.Fatal("link.header -> Error: headerSize wrong")
-		return
+		return fmt.Errorf("invalid ShellLink header size")
 	}
-
-	//validate the clsid
+	var expectedCLSID = [16]byte{0x01, 0x14, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}
 	var linkCLSID [16]byte
 	copy(linkCLSID[:], header[4:20])
 	shellLink.Header.LinkCLSID = linkCLSID
-	var expectedCLSID = [16]byte{0x01, 0x14, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}
 	if shellLink.Header.LinkCLSID != expectedCLSID {
-		log.Fatal("link.header -> Error: clsid wrong")
-		return
+		return fmt.Errorf("invalid ShellLink CLSID")
 	}
 
-	//read props
 	shellLink.Header.LinkFlags = binary.LittleEndian.Uint32(header[20:24])
 	shellLink.Header.FileAttributes = binary.LittleEndian.Uint32(header[24:28])
 	shellLink.Header.CreationTime = binary.LittleEndian.Uint64(header[28:36])
@@ -141,37 +139,62 @@ func readShellLinkHeader(header [76]byte) {
 	utils.CheckNullUint32(shellLink.Header.Reserved2)
 	shellLink.Header.Reserved3 = binary.LittleEndian.Uint32(header[72:76])
 	utils.CheckNullUint32(shellLink.Header.Reserved3)
-	//populate flags and hotKeys
+
 	linkFlags = utils.ParseLinkFlags(shellLink.Header.LinkFlags)
 	fileAttributesFlags = utils.ParseFileAttributesFlags(shellLink.Header.FileAttributes)
 	hotKeyLowByte = utils.ParseHotKeyLowByte(header[64])
 	hotKeyHighByte = utils.ParseHotKeyHighByte(header[65])
+	return nil
 }
 
 func readLinkTargetIDList(r io.Reader) []byte {
-	// bytes for the size
 	var sizeBuf [2]byte
-	_, err := io.ReadFull(r, sizeBuf[:])
-	if err != nil {
-		fmt.Printf("failed to read IDListSize: %v\n", err)
+	if _, err := io.ReadFull(r, sizeBuf[:]); err != nil {
+		log.Printf("[WARNING] Failed to read IDListSize: %v", err)
 		return nil
 	}
-
 	idListSize := binary.LittleEndian.Uint16(sizeBuf[:])
 	if idListSize == 0 {
 		return nil
 	}
-
-	// the list
 	idList := make([]byte, idListSize)
-	_, err = io.ReadFull(r, idList)
-	if err != nil {
-		fmt.Printf("failed to read IDList: %v\n", err)
+	if _, err := io.ReadFull(r, idList); err != nil {
+		log.Printf("[WARNING] Failed to read IDList: %v", err)
 		return nil
 	}
-
 	shellLink.LinkTargetIdList.IdListSize = idListSize
 	return idList
+}
+
+func parseIDList(data []byte) {
+	offset := 0
+	for {
+		if offset+2 > len(data) {
+			return
+		}
+		itemSize := binary.LittleEndian.Uint16(data[offset : offset+2])
+		if itemSize == 0x0000 {
+			break
+		}
+		if offset+int(itemSize) > len(data) {
+			return
+		}
+		item := ItemId{
+			Size: itemSize,
+			Data: data[offset+2 : offset+int(itemSize)],
+		}
+		shellLink.LinkTargetIdList.ItemIdList = append(shellLink.LinkTargetIdList.ItemIdList, item)
+		parsedItems = append(parsedItems, parseItemIdToString(item))
+		offset += int(itemSize)
+	}
+}
+
+func parseItemIdToString(item ItemId) string {
+	str := string(item.Data)
+	if utils.IsPrintable(str) {
+		return str
+	}
+	return fmt.Sprintf("% X", item.Data)
 }
 
 func readLinkInfo(data []byte) {
@@ -209,18 +232,20 @@ func readLinkInfo(data []byte) {
 func readStringData(r io.Reader) {
 	readString := func() string {
 		var count uint16
-		binary.Read(r, binary.LittleEndian, &count)
-		if count == 0 {
+		if err := binary.Read(r, binary.LittleEndian, &count); err != nil || count == 0 {
 			return ""
 		}
-
 		if linkFlags["IsUnicode"] {
 			buf := make([]byte, count*2)
-			io.ReadFull(r, buf)
+			if _, err := io.ReadFull(r, buf); err != nil {
+				return ""
+			}
 			return utils.DecodeUTF16String(buf)
 		} else {
 			buf := make([]byte, count)
-			io.ReadFull(r, buf)
+			if _, err := io.ReadFull(r, buf); err != nil {
+				return ""
+			}
 			return string(buf)
 		}
 	}
@@ -242,66 +267,38 @@ func readStringData(r io.Reader) {
 	}
 }
 
-
 func readExtraData(r io.Reader) {
-	
-}
-
-func parseItemIdToString(item ItemId) string {
-	str := string(item.Data)
-	if utils.IsPrintable(str) {
-		return str
-	}
-	return fmt.Sprintf("% X", item.Data)
-}
-
-func parseIDList(data []byte) {
-	var items []ItemId
-	offset := 0
-
 	for {
-		if offset+2 > len(data) {
-			return 
-			//fmt.Print("unexpected end of IDList, missing terminal ID")
-		}
-
-		itemSize := binary.LittleEndian.Uint16(data[offset : offset+2])
-
-		// TERMINALID
-		if itemSize == 0x0000 {
+		var blockSize uint32
+		if err := binary.Read(r, binary.LittleEndian, &blockSize); err != nil || blockSize == 0 {
 			break
 		}
-
-		if offset+int(itemSize) > len(data) {
-			return
-			//fmt.Fprint("invalid ItemID: size %d exceeds buffer at offset %d", itemSize, offset)
+		var sig uint32
+		if err := binary.Read(r, binary.LittleEndian, &sig); err != nil {
+			break
 		}
-
-		item := ItemId{
-			Size: itemSize,
-			Data: data[offset+2 : offset+int(itemSize)],
+		if sig == 0xA0000000 {
+			break
 		}
-		items = append(items, item)
-		parsedItems = append(parsedItems, parseItemIdToString(item))
-		offset += int(itemSize)
+		if _, err := io.CopyN(io.Discard, r, int64(blockSize-8)); err != nil {
+			break
+		}
 	}
-
-	shellLink.LinkTargetIdList.ItemIdList = items 
 }
 
 func parseVolumeId(data []byte, offset uint32) {
-	if int(offset)+16 > len(data) {
-		fmt.Println("VolumeID structure too short")
+	start := int(offset)
+	if start+16 > len(data) {
+		log.Printf("[WARNING] VolumeID structure too short at offset %d", offset)
+		return
 	}
 
-	start := int(offset)
-
-	shellLink.LinkInfo.VolumeID.VolumeIdSize = binary.LittleEndian.Uint32(data[start:start+4])
-	shellLink.LinkInfo.VolumeID.DriveType = binary.LittleEndian.Uint32(data[start+4:start+8])
-	shellLink.LinkInfo.VolumeID.DriveSerialNumber = binary.LittleEndian.Uint32(data[start+8:start+12])
-	shellLink.LinkInfo.VolumeID.VolumeLabelOffset = binary.LittleEndian.Uint32(data[start+12:start+16])
+	shellLink.LinkInfo.VolumeID.VolumeIdSize = binary.LittleEndian.Uint32(data[start : start+4])
+	shellLink.LinkInfo.VolumeID.DriveType = binary.LittleEndian.Uint32(data[start+4 : start+8])
+	shellLink.LinkInfo.VolumeID.DriveSerialNumber = binary.LittleEndian.Uint32(data[start+8 : start+12])
+	shellLink.LinkInfo.VolumeID.VolumeLabelOffset = binary.LittleEndian.Uint32(data[start+12 : start+16])
 	if shellLink.LinkInfo.VolumeID.VolumeLabelOffset == 20 {
-		shellLink.LinkInfo.VolumeID.VolumeLabelOffsetUnicode = binary.LittleEndian.Uint32(data[start+16:start+20])
+		shellLink.LinkInfo.VolumeID.VolumeLabelOffsetUnicode = binary.LittleEndian.Uint32(data[start+16 : start+20])
 	}
 
 	var label string
@@ -309,7 +306,7 @@ func parseVolumeId(data []byte, offset uint32) {
 		labelStart := start + int(shellLink.LinkInfo.VolumeID.VolumeLabelOffset)
 		end := utils.FindNullTerminator(data[labelStart:])
 		labelBytes := data[labelStart : labelStart+end]
-		label = string(labelBytes) 
+		label = string(labelBytes)
 	} else {
 		unicodeStart := start + int(shellLink.LinkInfo.VolumeID.VolumeLabelOffsetUnicode)
 		end := utils.FindNullTerminator(data[unicodeStart:])
@@ -324,15 +321,16 @@ func parseCommonNetworkRelativeLink(data []byte, offset uint32) {
 	start := int(offset)
 	link := &shellLink.LinkInfo.CommonNetworkRelativeLink
 
-	link.CommonNetworkRelativeLinkSize = binary.LittleEndian.Uint32(data[start:start+4])
-	if shellLink.LinkInfo.CommonNetworkRelativeLink.CommonNetworkRelativeLinkSize < 0x00000014 {
-		fmt.Println("Error: the CommonNetworkRelativeLinkSize must be at least 20")
+	link.CommonNetworkRelativeLinkSize = binary.LittleEndian.Uint32(data[start : start+4])
+	if link.CommonNetworkRelativeLinkSize < 0x14 {
+		log.Printf("[WARNING] Invalid CommonNetworkRelativeLinkSize: %d", link.CommonNetworkRelativeLinkSize)
+		return
 	}
+
 	link.CommonNetworkRelativeLinkFlags = binary.LittleEndian.Uint32(data[start+4 : start+8])
 	link.NetNameOffset = binary.LittleEndian.Uint32(data[start+8 : start+12])
 	link.DeviceNameOffset = binary.LittleEndian.Uint32(data[start+12 : start+16])
 	link.NetworkProviderType = binary.LittleEndian.Uint32(data[start+16 : start+20])
-
 
 	if link.NetNameOffset != 0 {
 		netNameStart := start + int(link.NetNameOffset)

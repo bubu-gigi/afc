@@ -4,6 +4,7 @@ import (
 	"afc/config"
 	"afc/converters"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,6 +41,13 @@ var (
 
 func main() {
 	printBanner()
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	logFile, err := os.OpenFile("afc.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("Error opening file log: %v", err)
+	}
+	log.SetOutput(logFile)
+
 	var rootCmd = &cobra.Command{
 		Use:   "afc",
 		Short: "AFC - Artifact Forensics Collector",
@@ -109,7 +117,7 @@ func collectArtifacts(kdest string) {
 		case isRegistryHive(path):
 			registry = append(registry, path)
 
-		case strings.HasSuffix(lowerPath, ".evtx"):
+		case strings.Contains(lowerPath, "application.evtx"):
 			evtx = append(evtx, path)
 
 		case strings.HasSuffix(lowerPath, ".automaticdestinations-ms"), strings.HasSuffix(lowerPath, ".customdestinations-ms"):
@@ -184,7 +192,7 @@ func convert(cfg *config.Config) {
 		fmt.Println("Evtx converted")
 	}()
 
-	wg.Add(1)
+	/*wg.Add(1)
 	go func() {
 		defer wg.Done()
 		converters.ConvertRegistryHiveToCsv(registry, cfg)
@@ -238,6 +246,13 @@ func convert(cfg *config.Config) {
 		defer wg.Done()
 		converters.ConvertLinkToCsv(lnkFiles, cfg)
 		fmt.Println("Link converted")
+	}()*/
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		converters.ConvertJumpToCsv(jumpList, cfg)
+		fmt.Println("Jump List converted")
 	}()
 
 	wg.Wait()

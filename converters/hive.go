@@ -17,7 +17,7 @@ import (
 func ConvertRegistryHiveToCsv(files []string, cfg *config.Config) {
 	for _, file := range files {
 		if err := convertHive(file, cfg); err != nil {
-			log.Printf("hive|Error processing file %s: %v", file, err)
+			log.Printf("[ERROR] Failed to convert registry hive %s: %v", file, err)
 		}
 	}
 }
@@ -25,21 +25,26 @@ func ConvertRegistryHiveToCsv(files []string, cfg *config.Config) {
 func convertHive(file string, cfg *config.Config) error {
 	f, err := os.Open(file)
 	if err != nil {
-		return fmt.Errorf("hive|error opening file: %w", err)
+		return fmt.Errorf("cannot open registry hive %s: %w", file, err)
 	}
 	defer f.Close()
 
 	registry, err := regparser.NewRegistry(f)
 	if err != nil {
-		return fmt.Errorf("hive|error parsing hive: %w", err)
+		return fmt.Errorf("failed to parse registry hive %s: %w", file, err)
 	}
 
 	root := registry.OpenKey("")
 	if root == nil {
-		return fmt.Errorf("hive|root key not found")
+		return fmt.Errorf("root key not found in registry hive %s", file)
 	}
 
-	headers := []string{"Path", "LastWrite", "Name", "Type", "Value"}
+	headers := []string{
+		"Path", "LastWrite", "Name", "Type", "Value",
+		"ClassName", "SecurityOffset", "Flags",
+		"SubkeyCount", "ValueCount", "HasVirtual",
+	}
+
 	var rows [][]string
 	visited := make(map[string]bool)
 
@@ -49,7 +54,21 @@ func convertHive(file string, cfg *config.Config) error {
 			return
 		}
 		visited[path] = true
+
 		lastWrite := key.LastWriteTime().UTC().Format(time.RFC3339)
+		className := ""
+
+		if classLen := key.ClassLength(); classLen > 0 {
+			offset := int64(key.Class())
+			buf := make([]byte, classLen)
+			if _, err := f.ReadAt(buf, offset+0x1000); err == nil {
+				className = regparser.UTF16BytesToUTF8(buf, binary.LittleEndian)
+			}
+		}
+
+		flags := key.Flags()
+		hasVirtual := flags&0x20 != 0
+		securityOffset := fmt.Sprintf("0x%X", key.Security())
 
 		for _, value := range key.Values() {
 			name := value.Name()
@@ -59,7 +78,7 @@ func convertHive(file string, cfg *config.Config) error {
 			valType := regTypeString(value.Type())
 			valData, err := getValueData(value, f)
 			if err != nil {
-				log.Printf("hive|Error reading data in file %s (key: %s.%s): %v", file, path, name, err)
+				log.Printf("[WARNING] Failed to read value data in file %s (key: %s\\%s): %v", file, path, name, err)
 				continue
 			}
 			rows = append(rows, []string{
@@ -68,6 +87,12 @@ func convertHive(file string, cfg *config.Config) error {
 				name,
 				valType,
 				valData,
+				className,
+				securityOffset,
+				fmt.Sprintf("0x%X", flags),
+				fmt.Sprintf("%d", len(key.Subkeys())),
+				fmt.Sprintf("%d", len(key.Values())),
+				fmt.Sprintf("%t", hasVirtual),
 			})
 		}
 
@@ -80,9 +105,10 @@ func convertHive(file string, cfg *config.Config) error {
 	walk(root, `\`)
 
 	if err := utils.SendCsvToWazuh(cfg, headers, rows); err != nil {
-		return fmt.Errorf("hive|error sending to Wazuh: %w", err)
+		return fmt.Errorf("failed to send registry CSV to Wazuh: %w", err)
 	}
 
+	log.Printf("[INFO] Converted registry hive %s with %d records", file, len(rows))
 	return nil
 }
 

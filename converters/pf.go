@@ -4,6 +4,7 @@ import (
 	"afc/config"
 	utils "afc/lib"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,25 +13,24 @@ import (
 	prefetch "www.velocidex.com/golang/go-prefetch"
 )
 
-
 func ConvertPrefetchToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		convertPrefetch(file, config)
+		if err := convertPrefetch(file, config); err != nil {
+			log.Printf("prefetch: failed to convert file %s: %v", file, err)
+		}
 	}
 }
 
-func convertPrefetch(file string, config *config.Config) {
+func convertPrefetch(file string, config *config.Config) error {
 	f, err := os.Open(file)
 	if err != nil {
-		fmt.Printf("prefetch|Error opening file %s: %v\n", file, err)
-		return
+		return fmt.Errorf("open error: %w", err)
 	}
 	defer f.Close()
 
 	pf, err := prefetch.LoadPrefetch(f)
 	if err != nil {
-		fmt.Printf("prefetch|Error parsing file %s: %v\n", file, err)
-		return
+		return fmt.Errorf("parse error: %w", err)
 	}
 
 	headers := []string{
@@ -51,12 +51,12 @@ func convertPrefetch(file string, config *config.Config) {
 		time.Now().Format(time.RFC3339),
 	}
 
-	err = utils.SendCsvToWazuh(config, headers, [][]string{row})
-	if err != nil {
-		fmt.Printf("prefetch|Error sending CSV to Wazuh for file %s: %v\n", file, err)
+	if err := utils.SendCsvToWazuh(config, headers, [][]string{row}); err != nil {
+		return fmt.Errorf("send to Wazuh failed: %w", err)
 	}
-}
 
+	return nil
+}
 
 func formatRunTimes(times []time.Time) string {
 	var result []string

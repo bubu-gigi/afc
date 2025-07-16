@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -14,49 +15,56 @@ import (
 
 func ConvertUsnJrnlToCsv(files []string) {
 	for _, file := range files {
-		convertUsnJrnl(file)
+		if err := convertUsnJrnl(file); err != nil {
+			log.Printf("usn: failed to convert file %s: %v", file, err)
+		}
 	}
 }
 
-func convertUsnJrnl(file string) {
+func convertUsnJrnl(file string) error {
 	f, err := os.Open(file)
 	if err != nil {
-		fmt.Println("Error opening the file")
-		return
+		return fmt.Errorf("open error: %w", err)
 	}
 	defer f.Close()
 
 	var records []*UsnRecord
 	for {
 		rec, err := parseUsnRecord(f)
-		if err == io.EOF {
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			break
-		} else if err != nil {
-			if err == io.EOF || err == io.ErrUnexpectedEOF {
-				break
-			}
-			fmt.Println("Error reading record:", err)
+		}
+		if err != nil {
+			log.Printf("usn: record parse error in %s: %v", file, err)
 			continue
 		}
 		records = append(records, rec)
 	}
+
 	fileOut := utils.CreateOutputFile(file)
 	defer fileOut.Close()
-
 
 	w := csv.NewWriter(fileOut)
 	defer w.Flush()
 
-	w.Write([]string{"Time", "USN", "Filename", "Reasons", "Attributes"})
+	if err := w.Write([]string{"Time", "USN", "Filename", "Reasons", "Attributes"}); err != nil {
+		return fmt.Errorf("header write error: %w", err)
+	}
+
 	for _, r := range records {
-		w.Write([]string{
+		row := []string{
 			r.Timestamp.Format(time.RFC3339),
 			fmt.Sprintf("%d", r.Usn),
 			r.FileName,
 			strings.Join(decodeReasonFlags(r.Reason), "|"),
 			fmt.Sprintf("0x%X", r.FileAttributes),
-		})
+		}
+		if err := w.Write(row); err != nil {
+			log.Printf("usn: error writing row: %v", err)
+		}
 	}
+
+	return nil
 }
 
 func parseUsnRecord(r io.Reader) (*UsnRecord, error) {
@@ -64,10 +72,12 @@ func parseUsnRecord(r io.Reader) (*UsnRecord, error) {
 	if err := binary.Read(r, binary.LittleEndian, &length); err != nil {
 		return nil, err
 	}
+
 	buf := make([]byte, length-4)
 	if _, err := io.ReadFull(r, buf); err != nil {
 		return nil, err
 	}
+
 	full := append(make([]byte, 4), buf...)
 	binary.LittleEndian.PutUint32(full[:4], length)
 

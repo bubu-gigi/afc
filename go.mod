@@ -12,6 +12,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
+	github.com/richardlehane/msoleps v1.0.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	www.velocidex.com/golang/binparsergen v0.1.1-0.20201101234514-bbdb29f9ee31 // indirect
@@ -22,6 +23,7 @@ require (
 	github.com/Velocidex/ordereddict v0.0.0-20250626035939-2f7f022fc719
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/richardlehane/mscfb v1.0.4
 	github.com/spf13/cobra v1.9.1
 	golang.org/x/sys v0.25.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0

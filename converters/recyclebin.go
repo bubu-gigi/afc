@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,18 +38,22 @@ func ConvertRecycleBinToCsv(files []string, config *config.Config) {
 		case strings.HasPrefix(filepath.Base(file), "$I"):
 			entry, err := ParseDollarI(file)
 			if err != nil {
-				fmt.Println("Error parsing $I:", err)
+				log.Printf("recyclebin: error parsing $I file %s: %v", file, err)
 				continue
 			}
-			writeDollarIToCsv(file, entry)
+			if err := writeDollarIToCsv(file, entry); err != nil {
+				log.Printf("recyclebin: error writing CSV for $I file %s: %v", file, err)
+			}
 
 		case strings.EqualFold(filepath.Base(file), "INFO2"):
 			entries, err := ParseINFO2(file)
 			if err != nil {
-				fmt.Println("Error parsing INFO2:", err)
+				log.Printf("recyclebin: error parsing INFO2 file %s: %v", file, err)
 				continue
 			}
-			writeINFO2ToCsv(file, entries)
+			if err := writeINFO2ToCsv(file, entries); err != nil {
+				log.Printf("recyclebin: error writing CSV for INFO2 file %s: %v", file, err)
+			}
 		}
 	}
 }
@@ -60,16 +65,13 @@ func ParseDollarI(path string) (RecycleEntry, error) {
 	}
 	defer f.Close()
 
-	var version uint64
+	var version, fileSize, deletedRaw uint64
 	if err := binary.Read(f, binary.LittleEndian, &version); err != nil {
 		return RecycleEntry{}, err
 	}
 	if version != 1 && version != 2 {
 		return RecycleEntry{}, fmt.Errorf("unsupported $I version: %d", version)
 	}
-
-	var fileSize uint64
-	var deletedRaw uint64
 	if err := binary.Read(f, binary.LittleEndian, &fileSize); err != nil {
 		return RecycleEntry{}, err
 	}
@@ -145,28 +147,27 @@ func ParseINFO2(path string) ([]Info2Entry, error) {
 		}
 		nameUTF16 := strings.TrimRight(string(utf16.Decode(u16)), "\x00")
 
-		entry := Info2Entry{
+		entries = append(entries, Info2Entry{
 			FileIndex:     index,
 			DriveNumber:   drive,
 			FileNameASCII: nameASCII,
 			FileNameUTF16: nameUTF16,
 			DeletedTime:   delTime,
 			FileSize:      size,
-		}
-		entries = append(entries, entry)
+		})
 	}
 
 	return entries, nil
 }
 
-func writeDollarIToCsv(file string, entry RecycleEntry) {
+func writeDollarIToCsv(file string, entry RecycleEntry) error {
 	out := utils.CreateOutputFile(file)
 	defer out.Close()
 	writer := csv.NewWriter(out)
 	defer writer.Flush()
 
 	writer.Write([]string{"Version", "Size", "DeletedTime", "OriginalPath"})
-	writer.Write([]string{
+	return writer.Write([]string{
 		fmt.Sprintf("%d", entry.Version),
 		fmt.Sprintf("%d", entry.FileSize),
 		entry.DeletedTime.Format(time.RFC3339),
@@ -174,7 +175,7 @@ func writeDollarIToCsv(file string, entry RecycleEntry) {
 	})
 }
 
-func writeINFO2ToCsv(file string, entries []Info2Entry) {
+func writeINFO2ToCsv(file string, entries []Info2Entry) error {
 	out := utils.CreateOutputFile(file)
 	defer out.Close()
 	writer := csv.NewWriter(out)
@@ -182,13 +183,16 @@ func writeINFO2ToCsv(file string, entries []Info2Entry) {
 
 	writer.Write([]string{"FileIndex", "DriveNumber", "FileNameASCII", "FileNameUTF16", "DeletedTime", "FileSize"})
 	for _, e := range entries {
-		writer.Write([]string{
+		if err := writer.Write([]string{
 			fmt.Sprintf("%d", e.FileIndex),
 			fmt.Sprintf("%d", e.DriveNumber),
 			e.FileNameASCII,
 			e.FileNameUTF16,
 			e.DeletedTime.Format(time.RFC3339),
 			fmt.Sprintf("%d", e.FileSize),
-		})
+		}); err != nil {
+			return err
+		}
 	}
+	return nil
 }

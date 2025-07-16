@@ -5,29 +5,29 @@ import (
 	utils "afc/lib"
 	"encoding/xml"
 	"fmt"
+	"log"
 	"os"
 )
 
 func ConvertTaskXmlToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		err := convertTaskXml(file, config)
-		if err != nil {
-			fmt.Printf("Errore nel file %s: %v\n", file, err)
+		if err := convertTaskXml(file, config); err != nil {
+			log.Printf("taskxml: error processing file %s: %v", file, err)
 		}
 	}
 }
+
 func convertTaskXml(file string, config *config.Config) error {
 	xmlFile, err := os.Open(file)
 	if err != nil {
-		return fmt.Errorf("errore apertura file: %w", err)
+		return fmt.Errorf("taskxml: open error: %w", err)
 	}
 	defer xmlFile.Close()
 
 	var task Task
 	decoder := xml.NewDecoder(xmlFile)
-	err = decoder.Decode(&task)
-	if err != nil {
-		return fmt.Errorf("errore parsing XML: %w", err)
+	if err := decoder.Decode(&task); err != nil {
+		return fmt.Errorf("taskxml: xml decode error: %w", err)
 	}
 
 	headers := []string{
@@ -67,9 +67,8 @@ func convertTaskXml(file string, config *config.Config) error {
 		triggerEnabled,
 	}
 
-	err = utils.SendCsvToWazuh(config, headers, [][]string{record})
-	if err != nil {
-		return fmt.Errorf("errore invio Wazuh: %w", err)
+	if err := utils.SendCsvToWazuh(config, headers, [][]string{record}); err != nil {
+		return fmt.Errorf("taskxml: wazuh send error: %w", err)
 	}
 
 	return nil

@@ -1,50 +1,46 @@
 package converters
 
-//https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-tsch/96446df7-7683-40e0-a713-b01933b93b18
-
 import (
 	"afc/config"
 	utils "afc/lib"
 	"encoding/binary"
 	"fmt"
+	"log"
 	"os"
-	"strings"
 )
-
 
 func ConvertTaskJobToCsv(files []string, config *config.Config) {
 	for _, file := range files {
 		convertTaskJob(file, config)
 	}
 }
+
 func convertTaskJob(file string, config *config.Config) {
 	f, err := os.Open(file)
 	if err != nil {
-		fmt.Printf("Error reading: %v", err)
+		log.Printf("taskjob: error opening file %s: %v", file, err)
 		return
 	}
 	defer f.Close()
 
 	header := &JobHeader{}
-	err = readHeader(f, header)
-	if err != nil {
-		fmt.Printf("Error reading: %v", err)
+	if err := readHeader(f, header); err != nil {
+		log.Printf("taskjob: error reading header for file %s: %v", file, err)
 		return
 	}
 
 	instanceCount, appName, params, workingDir, author, comment, userData, reservedData, err := readDataSection(f)
 	if err != nil {
-		fmt.Printf("Error reading: %v", err)
+		log.Printf("taskjob: error reading data section for file %s: %v", file, err)
 		return
 	}
 
 	triggers, err := readTriggers(f)
 	if err != nil {
-		fmt.Printf("Error reading: %v", err)
+		log.Printf("taskjob: error reading triggers for file %s: %v", file, err)
 		return
 	}
 
-	// Intestazioni e record principale
 	headers := []string{
 		"ProductVersion", "FormatVersion", "AppNameOffset", "TriggerOffset",
 		"ErrorRetryCount", "ErrorRetryInterval", "IdleDeadline", "IdleWait", "Priority", "MaxRunTime",
@@ -74,13 +70,10 @@ func convertTaskJob(file string, config *config.Config) {
 		fmt.Sprintf("%d", len(triggers)),
 	}
 
-	err = utils.SendCsvToWazuh(config, headers, [][]string{record})
-	if err != nil {
-		fmt.Printf("wazuh|Error sending job header to Wazuh: %v\n", err)
-		return
+	if err := utils.SendCsvToWazuh(config, headers, [][]string{record}); err != nil {
+		log.Printf("taskjob: error sending header CSV for file %s: %v", file, err)
 	}
 
-	// Triggers
 	triggerHeaders := []string{
 		"Index", "BeginDate", "EndDate", "StartTime", "DurationMin", "IntervalMin",
 		"Flags", "TriggerType", "TriggerSpecific0", "TriggerSpecific1", "TriggerSpecific2",
@@ -110,12 +103,10 @@ func convertTaskJob(file string, config *config.Config) {
 		})
 	}
 
-	err = utils.SendCsvToWazuh(config, triggerHeaders, triggerRows)
-	if err != nil {
-		fmt.Printf("wazuh|Error sending job triggers to Wazuh: %v\n", err)
+	if err := utils.SendCsvToWazuh(config, triggerHeaders, triggerRows); err != nil {
+		log.Printf("taskjob: error sending triggers CSV for file %s: %v", file, err)
 	}
 }
-
 
 func readHeader(file *os.File, header *JobHeader) error {
 	return binary.Read(file, binary.LittleEndian, header)
@@ -123,8 +114,7 @@ func readHeader(file *os.File, header *JobHeader) error {
 
 func readDataSection(f *os.File) (uint16, string, string, string, string, string, []byte, []byte, error) {
 	var instanceCount uint16
-	err := binary.Read(f, binary.LittleEndian, &instanceCount)
-	if err != nil {
+	if err := binary.Read(f, binary.LittleEndian, &instanceCount); err != nil {
 		return 0, "", "", "", "", "", nil, nil, err
 	}
 
@@ -150,31 +140,27 @@ func readDataSection(f *os.File) (uint16, string, string, string, string, string
 	}
 
 	var userDataSize uint16
-	err = binary.Read(f, binary.LittleEndian, &userDataSize)
-	if err != nil {
+	if err := binary.Read(f, binary.LittleEndian, &userDataSize); err != nil {
 		return 0, "", "", "", "", "", nil, nil, err
 	}
 
 	var userData []byte
 	if userDataSize > 0 {
 		userData = make([]byte, userDataSize)
-		_, err = f.Read(userData)
-		if err != nil {
+		if _, err := f.Read(userData); err != nil {
 			return 0, "", "", "", "", "", nil, nil, err
 		}
 	}
 
 	var reservedDataSize uint16
-	err = binary.Read(f, binary.LittleEndian, &reservedDataSize)
-	if err != nil {
+	if err := binary.Read(f, binary.LittleEndian, &reservedDataSize); err != nil {
 		return 0, "", "", "", "", "", nil, nil, err
 	}
 
 	var reservedData []byte
 	if reservedDataSize > 0 {
 		reservedData = make([]byte, reservedDataSize)
-		_, err = f.Read(reservedData)
-		if err != nil {
+		if _, err := f.Read(reservedData); err != nil {
 			return 0, "", "", "", "", "", nil, nil, err
 		}
 	}
@@ -184,8 +170,7 @@ func readDataSection(f *os.File) (uint16, string, string, string, string, string
 
 func readTriggers(f *os.File) ([]JobTrigger, error) {
 	var triggerSizeBytes uint16
-	err := binary.Read(f, binary.LittleEndian, &triggerSizeBytes)
-	if err != nil {
+	if err := binary.Read(f, binary.LittleEndian, &triggerSizeBytes); err != nil {
 		return nil, err
 	}
 
@@ -194,17 +179,11 @@ func readTriggers(f *os.File) ([]JobTrigger, error) {
 
 	for i := 0; i < numTriggers; i++ {
 		var t JobTrigger
-		err := binary.Read(f, binary.LittleEndian, &t)
-		if err != nil {
+		if err := binary.Read(f, binary.LittleEndian, &t); err != nil {
 			return nil, err
 		}
 		triggers = append(triggers, t)
 	}
 
 	return triggers, nil
-}
-
-func createTriggerOutputFile(base string) (*os.File, error) {
-	outPath := strings.TrimSuffix(base, ".job") + "_triggers.csv"
-	return os.Create(outPath)
 }

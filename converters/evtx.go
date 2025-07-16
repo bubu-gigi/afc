@@ -48,7 +48,7 @@ var fieldsToShorten = map[string]bool{
 func ConvertEvtxToCsv(files []string, config *config.Config) {
 	for _, file := range files {
 		if err := convertEvtx(file, config); err != nil {
-			log.Printf("evtx|Error converting file %s: %v", file, err)
+			log.Printf("[ERROR] Failed to convert EVTX file %s: %v", file, err)
 		}
 	}
 }
@@ -56,13 +56,13 @@ func ConvertEvtxToCsv(files []string, config *config.Config) {
 func convertEvtx(file string, config *config.Config) error {
 	f, err := os.Open(file)
 	if err != nil {
-		return fmt.Errorf("evtx|Error opening file %s: %w", file, err)
+		return fmt.Errorf("cannot open EVTX file %s: %w", file, err)
 	}
 	defer f.Close()
 
 	chunks, err := evtx.GetChunks(f)
 	if err != nil {
-		return fmt.Errorf("evtx|Error getting chunks from file %s: %w", file, err)
+		return fmt.Errorf("cannot extract chunks from EVTX file %s: %w", file, err)
 	}
 
 	var flattenedRecords []map[string]string
@@ -72,7 +72,7 @@ func convertEvtx(file string, config *config.Config) error {
 	for chunkIndex, chunk := range chunks {
 		events, err := chunk.Parse(0)
 		if err != nil {
-			log.Printf("evtx|Error parsing chunk in file %s: %v", file, err)
+			log.Printf("[WARNING] Failed to parse chunk %d in file %s: %v", chunkIndex, file, err)
 			continue
 		}
 
@@ -118,8 +118,6 @@ func convertEvtx(file string, config *config.Config) error {
 				row[fmt.Sprintf("PayloadData%d", i+1)] = extractPayloadDataN(dict, i)
 			}
 
-			row["MapDescription"] = "A security-enabled local group membership was enumerated"
-
 			if payloadBytes, err := json.Marshal(dict); err == nil {
 				row["Payload"] = string(payloadBytes)
 			}
@@ -132,7 +130,7 @@ func convertEvtx(file string, config *config.Config) error {
 		}
 	}
 
-		var fullKeys []string
+	var fullKeys []string
 	for k := range fieldSet {
 		fullKeys = append(fullKeys, k)
 	}
@@ -150,22 +148,20 @@ func convertEvtx(file string, config *config.Config) error {
 	}
 
 	var allRows [][]string
-	fmt.Println(strings.Join(shortKeys, ","))
-
 	for _, record := range flattenedRecords {
 		var row []string
 		for _, k := range fullKeys {
 			row = append(row, record[k])
 		}
 		allRows = append(allRows, row)
-		fmt.Println(strings.Join(row, ","))
 	}
 
 	err = utils.SendCsvToWazuh(config, shortKeys, allRows)
 	if err != nil {
-		return fmt.Errorf("evtx|error sending CSV to Wazuh: %w", err)
+		return fmt.Errorf("failed to send EVTX CSV to Wazuh: %w", err)
 	}
 
+	log.Printf("[INFO] Converted %d events from file %s", recordCount, file)
 	return nil
 }
 

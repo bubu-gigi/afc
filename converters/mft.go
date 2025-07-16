@@ -5,6 +5,7 @@ import (
 	utils "afc/lib"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,18 +16,23 @@ import (
 
 func ConvertMFTToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		convertMFT(file, config)
+		if err := convertMFT(file, config); err != nil {
+			log.Printf("mft: failed to convert file %s: %v", file, err)
+		}
 	}
 }
-func convertMFT(file string, config *config.Config) {
+
+func convertMFT(file string, config *config.Config) error {
 	f, err := os.Open(file)
 	if err != nil {
-		fmt.Printf("Errore apertura file: %v\n", err)
-		return
+		return fmt.Errorf("open error: %w", err)
 	}
 	defer f.Close()
 
-	stat, _ := f.Stat()
+	stat, err := f.Stat()
+	if err != nil {
+		return fmt.Errorf("stat error: %w", err)
+	}
 	size := stat.Size()
 
 	headers := []string{
@@ -39,10 +45,10 @@ func convertMFT(file string, config *config.Config) {
 		"LastRecordChange0x10", "LastRecordChange0x30",
 		"LastAccess0x10", "LastAccess0x30",
 		"LogfileSequenceNumber",
+		"Components", "AllFileNames", "Links",
 	}
 
 	var rows [][]string
-
 	ctx := context.Background()
 	stream := parser.ParseMFTFile(ctx, f, size, 4096, 1024)
 
@@ -55,6 +61,7 @@ func convertMFT(file string, config *config.Config) {
 		if len(row.FileNames) > 0 {
 			fileName = row.FileNames[len(row.FileNames)-1]
 		}
+
 		nameType := row.FileNameTypes()
 		isAds := strings.Contains(fileName, ":") && !row.IsDir
 		extension := filepath.Ext(fileName)
@@ -87,19 +94,23 @@ func convertMFT(file string, config *config.Config) {
 			formatTime(row.LastAccess0x10),
 			formatTime(row.LastAccess0x30),
 			fmt.Sprintf("%d", row.LogFileSeqNum),
+			strings.Join(row.Components(), "\\"),
+			strings.Join(row.FileNames, "|"),
+			strings.Join(row.Links(), "||"),
 		})
 	}
 
 	if len(rows) == 0 {
-		fmt.Printf("Nessuna riga da inviare per file: %s\n", file)
-		return
+		log.Printf("mft: no rows to send for file %s", file)
+		return nil
 	}
 
 	if err := utils.SendCsvToWazuh(config, headers, rows); err != nil {
-		fmt.Printf("Errore invio CSV a Wazuh per %s: %v\n", file, err)
+		return fmt.Errorf("send to Wazuh failed: %w", err)
 	}
-}
 
+	return nil
+}
 
 func formatTime(t time.Time) string {
 	if t.IsZero() {
