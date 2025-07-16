@@ -80,12 +80,10 @@ func DecodeUTF16String(b []byte) string {
 }
 
 func FileTimeToString(ft uint64) string {
-	const ticksPerSecond = 10000000
-	const epochDifference = 11644473600 
-
-	seconds := int64(ft / ticksPerSecond)
-	unix := seconds - epochDifference
-	return time.Unix(unix, 0).UTC().Format("2006-01-02 15:04:05")
+	const windowsToUnixOffset = 116444736000000000 
+	unixNano := (ft - windowsToUnixOffset) * 100    
+	t := time.Unix(0, int64(unixNano)).UTC()
+	return t.Format("2006-01-02 15:04:05.0000000")
 }
 
 func FormatMapKeys(m map[string]bool) string {
@@ -156,4 +154,22 @@ func ReadFullUnicodeString(f *os.File) (string, error) {
 	}
 
 	return string(utf16.Decode(utf16buf)), nil
+}
+
+func FormatGUID(b []byte) string {
+	if len(b) != 16 {
+		return "INVALID_GUID"
+	}
+
+	d1 := binary.LittleEndian.Uint32(b[0:4])
+	d2 := binary.LittleEndian.Uint16(b[4:6])
+	d3 := binary.LittleEndian.Uint16(b[6:8])
+	d4 := b[8:10] 
+	d5 := b[10:16] 
+
+	return fmt.Sprintf("%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+		d1, d2, d3,
+		d4[0], d4[1],
+		d5[0], d5[1], d5[2], d5[3], d5[4], d5[5],
+	)
 }
