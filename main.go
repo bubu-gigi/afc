@@ -76,18 +76,6 @@ func run() {
 	collectArtifacts(cfg.Paths.Input)
 
 	convert(cfg)
-
-	/*converters.ConvertJumpListToCsv(jl)
-	converters.ConvertLnkFilesToCsv(lnk)
-	converters.ConvertWindowsTimelineToCsv(timeline)
-	converters.ConvertRecycleBinToCsv(recycle)
-	converters.ConvertSrumToCsv(srum)
-	converters.ConvertScheduledTasksToCsv(jobs)
-	converters.ConvertAmcacheToCsv(amcache)
-	converters.ConvertThumbcacheToCsv(thumb)
-	converters.ConvertUsnJrnlToCsv(usnjrnl)
-	converters.ConvertWmiEtlToCsv(wmi)
-	converters.ConvertWmiEtlToCsv(etl)*/
 }
 
 func isRegistryHive(path string) bool {
@@ -192,7 +180,7 @@ func convert(cfg *config.Config) {
 		fmt.Println("Evtx converted")
 	}()
 
-	/*wg.Add(1)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		converters.ConvertRegistryHiveToCsv(registry, cfg)
@@ -246,7 +234,7 @@ func convert(cfg *config.Config) {
 		defer wg.Done()
 		converters.ConvertLinkToCsv(lnkFiles, cfg)
 		fmt.Println("Link converted")
-	}()*/
+	}()
 
 	wg.Add(1)
 	go func() {
