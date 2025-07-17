@@ -105,7 +105,7 @@ func collectArtifacts(kdest string) {
 		case isRegistryHive(path):
 			registry = append(registry, path)
 
-		case strings.Contains(lowerPath, "application.evtx"):
+		case strings.Contains(lowerPath, "application.evtx") && !strings.Contains(lowerPath, "slack"):
 			evtx = append(evtx, path)
 
 		case strings.HasSuffix(lowerPath, ".automaticdestinations-ms"), strings.HasSuffix(lowerPath, ".customdestinations-ms"):
@@ -201,13 +201,6 @@ func convert(cfg *config.Config) {
 		fmt.Println("Prefetch converted")
 	}()
 
-  	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		converters.ConvertPSHistoryToCsv(powershellHistory, cfg)
-		fmt.Println("Powershell History converted")
-	}()
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -243,6 +236,14 @@ func convert(cfg *config.Config) {
 		fmt.Println("Jump List converted")
 	}()
 
+
+  	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		converters.ConvertPSHistoryToCsv(powershellHistory, cfg)
+		fmt.Println("Powershell History converted")
+	}()
+	
 	wg.Wait()
 }
 
