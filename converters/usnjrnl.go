@@ -1,9 +1,9 @@
 package converters
 
 import (
+	"afc/config"
 	utils "afc/lib"
 	"encoding/binary"
-	"encoding/csv"
 	"fmt"
 	"io"
 	"log"
@@ -13,22 +13,22 @@ import (
 	"unicode/utf16"
 )
 
-func ConvertUsnJrnlToCsv(files []string) {
+func ConvertUsnJrnlToCsv(files []string, config *config.Config) {
 	for _, file := range files {
-		if err := convertUsnJrnl(file); err != nil {
+		if err := convertUsnJrnl(file, config); err != nil {
 			log.Printf("usn: failed to convert file %s: %v", file, err)
 		}
 	}
 }
 
-func convertUsnJrnl(file string) error {
+func convertUsnJrnl(file string, config *config.Config) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return fmt.Errorf("open error: %w", err)
 	}
 	defer f.Close()
 
-	var records []*UsnRecord
+	var rows [][]string
 	for {
 		rec, err := parseUsnRecord(f)
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
@@ -38,30 +38,43 @@ func convertUsnJrnl(file string) error {
 			log.Printf("usn: record parse error in %s: %v", file, err)
 			continue
 		}
-		records = append(records, rec)
-	}
 
-	fileOut := utils.CreateOutputFile(file)
-	defer fileOut.Close()
-
-	w := csv.NewWriter(fileOut)
-	defer w.Flush()
-
-	if err := w.Write([]string{"Time", "USN", "Filename", "Reasons", "Attributes"}); err != nil {
-		return fmt.Errorf("header write error: %w", err)
-	}
-
-	for _, r := range records {
 		row := []string{
-			r.Timestamp.Format(time.RFC3339),
-			fmt.Sprintf("%d", r.Usn),
-			r.FileName,
-			strings.Join(decodeReasonFlags(r.Reason), "|"),
-			fmt.Sprintf("0x%X", r.FileAttributes),
+			fmt.Sprint(rec.RecordLength),
+			fmt.Sprint(rec.MajorVersion),
+			fmt.Sprint(rec.MinorVersion),
+			fmt.Sprintf("%d", rec.FileReferenceNumber),
+			fmt.Sprintf("%d", rec.ParentFileReferenceNum),
+			fmt.Sprintf("%d", rec.Usn),
+			rec.Timestamp.Format(time.RFC3339),
+			fmt.Sprintf("0x%X", rec.Reason),
+			strings.Join(decodeReasonFlags(rec.Reason), "|"),
+			fmt.Sprintf("0x%X", rec.SourceInfo),
+			fmt.Sprintf("%d", rec.SecurityID),
+			fmt.Sprintf("%d", rec.FileAttributes),
+			fmt.Sprintf("0x%X", rec.FileAttributes),
+			rec.FileName,
+			file,
+			time.Now().Format(time.RFC3339),
 		}
-		if err := w.Write(row); err != nil {
-			log.Printf("usn: error writing row: %v", err)
-		}
+		rows = append(rows, row)
+	}
+
+	if len(rows) == 0 {
+		log.Printf("usn: no valid records found in %s", file)
+		return nil
+	}
+
+	headers := []string{
+		"RecordLength", "MajorVersion", "MinorVersion",
+		"FileReferenceNumber", "ParentFileReferenceNumber", "USN",
+		"Timestamp", "Reason", "ReasonDecoded", "SourceInfo",
+		"SecurityID", "FileAttributes", "FileAttributesHex", "FileName",
+		"SourceFile", "ParsedAt",
+	}
+
+	if err := utils.SendCsvToWazuh(config, headers, rows); err != nil {
+		return fmt.Errorf("send to Wazuh failed: %w", err)
 	}
 
 	return nil
@@ -81,13 +94,19 @@ func parseUsnRecord(r io.Reader) (*UsnRecord, error) {
 	full := append(make([]byte, 4), buf...)
 	binary.LittleEndian.PutUint32(full[:4], length)
 
+	if len(full) < 60 {
+		return nil, fmt.Errorf("invalid record length")
+	}
+
 	record := UsnRecord{}
 	record.RecordLength = length
 	record.MajorVersion = binary.LittleEndian.Uint16(full[4:6])
 	record.MinorVersion = binary.LittleEndian.Uint16(full[6:8])
+
 	if record.MajorVersion != 2 || record.MinorVersion != 0 {
 		return nil, fmt.Errorf("unsupported USN record version: %d.%d", record.MajorVersion, record.MinorVersion)
 	}
+
 	record.FileReferenceNumber = binary.LittleEndian.Uint64(full[8:16])
 	record.ParentFileReferenceNum = binary.LittleEndian.Uint64(full[16:24])
 	record.Usn = binary.LittleEndian.Uint64(full[24:32])
@@ -99,6 +118,10 @@ func parseUsnRecord(r io.Reader) (*UsnRecord, error) {
 	record.FileAttributes = binary.LittleEndian.Uint32(full[52:56])
 	nameLen := binary.LittleEndian.Uint16(full[56:58])
 	nameOffset := binary.LittleEndian.Uint16(full[58:60])
+
+	if int(nameOffset)+int(nameLen) > len(full) {
+		return nil, fmt.Errorf("invalid name offset/length")
+	}
 
 	nameBytes := full[nameOffset : nameOffset+nameLen]
 	utf16Chars := make([]uint16, nameLen/2)
