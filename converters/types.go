@@ -229,3 +229,19 @@ type Config struct {
 		Input  string `yaml:"input"`
 	} `yaml:"paths"`
 }
+
+type RecycleEntry struct {
+	Version      uint64
+	FileSize     uint64
+	DeletedTime  time.Time
+	OriginalPath string
+}
+
+type Info2Entry struct {
+	FileIndex     int32
+	DriveNumber   byte
+	FileNameASCII string
+	FileNameUTF16 string
+	DeletedTime   time.Time
+	FileSize      uint32
+}
