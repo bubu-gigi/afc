@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-//LINK 
+//LINK
 
 type ShellLinkHeader struct {
 	HeaderSize     uint32
@@ -18,10 +18,10 @@ type ShellLinkHeader struct {
 	FileSize       uint32
 	IconIndex      uint32
 	ShowCommand    uint32
-	HotKey		   uint16
+	HotKey         uint16
 	Reserved1      uint16
 	Reserved2      uint32
-	Reserved3 	   uint32
+	Reserved3      uint32
 }
 
 type LinkTargetIdList struct {
@@ -36,44 +36,44 @@ type ItemId struct {
 }
 
 type VolumeId struct {
-	VolumeIdSize uint32
-	DriveType uint32
-	DriveSerialNumber uint32
-	VolumeLabelOffset uint32
+	VolumeIdSize             uint32
+	DriveType                uint32
+	DriveSerialNumber        uint32
+	VolumeLabelOffset        uint32
 	VolumeLabelOffsetUnicode uint32
-	Data []byte
+	Data                     []byte
 }
 
 type CommonNetworkRelativeLink struct {
-	CommonNetworkRelativeLinkSize uint32
+	CommonNetworkRelativeLinkSize  uint32
 	CommonNetworkRelativeLinkFlags uint32
-	NetNameOffset uint32
-	DeviceNameOffset uint32
-	NetworkProviderType uint32
-	NetNameOffsetUnicode uint32
-	DeviceNameOffsetUnicode uint32
-	NetName []byte
-	DeviceName []byte
-	NetNameUnicode []byte
-	DeviceNameUnicode []byte
+	NetNameOffset                  uint32
+	DeviceNameOffset               uint32
+	NetworkProviderType            uint32
+	NetNameOffsetUnicode           uint32
+	DeviceNameOffsetUnicode        uint32
+	NetName                        []byte
+	DeviceName                     []byte
+	NetNameUnicode                 []byte
+	DeviceNameUnicode              []byte
 }
 
 type LinkInfo struct {
-	LinkInfoSize uint32
-	LinkInfoHeaderSize uint32
-	LinkInfoFlags uint32
-	VolumeIDOffset uint32
-	LocalBasePathOffset uint32
+	LinkInfoSize                    uint32
+	LinkInfoHeaderSize              uint32
+	LinkInfoFlags                   uint32
+	VolumeIDOffset                  uint32
+	LocalBasePathOffset             uint32
 	CommonNetworkRelativeLinkOffset uint32
-	CommonPathSuffixOffset uint32
-	LocalBasePathOffsetUnicode uint32
-	CommonPathSuffixOffsetUnicode uint32
-	VolumeID VolumeId
-	LocalBasePath []byte
-	CommonNetworkRelativeLink CommonNetworkRelativeLink
-	CommonPathSuffix []byte
-	LocalBasePathUnicode []byte
-	CommonPathSuffixUnicode []byte
+	CommonPathSuffixOffset          uint32
+	LocalBasePathOffsetUnicode      uint32
+	CommonPathSuffixOffsetUnicode   uint32
+	VolumeID                        VolumeId
+	LocalBasePath                   []byte
+	CommonNetworkRelativeLink       CommonNetworkRelativeLink
+	CommonPathSuffix                []byte
+	LocalBasePathUnicode            []byte
+	CommonPathSuffixUnicode         []byte
 }
 
 type StringData struct {
@@ -85,52 +85,52 @@ type StringData struct {
 }
 
 type ShellLink struct {
-	Header ShellLinkHeader
+	Header           ShellLinkHeader
 	LinkTargetIdList LinkTargetIdList
-	LinkInfo LinkInfo
-	StringData StringData
+	LinkInfo         LinkInfo
+	StringData       StringData
 }
 
 //Jobs v.1
 
 type JobHeader struct {
-	ProductVersion      uint16
-	FileVersion 		uint16
-	UUID                [16]byte
-	AppNameOffset       uint32
-	TriggerOffset       uint32
-	ErrorRetryCount     uint16
-	ErrorRetryInterval  uint16
-	IdleDeadline        uint16
-	IdleWait            uint16
-	Priority            uint32
-	MaxRunTime          uint32
-	ExitCode 			uint32 
-	Status 				uint32
-	Flags  				uint32
+	ProductVersion     uint16
+	FileVersion        uint16
+	UUID               [16]byte
+	AppNameOffset      uint32
+	TriggerOffset      uint32
+	ErrorRetryCount    uint16
+	ErrorRetryInterval uint16
+	IdleDeadline       uint16
+	IdleWait           uint16
+	Priority           uint32
+	MaxRunTime         uint32
+	ExitCode           uint32
+	Status             uint32
+	Flags              uint32
 }
 
 type JobTrigger struct {
-	TriggerSize       uint16 // always 0x30
-	Reserved1         uint16
-	BeginYear         uint16
-	BeginMonth        uint16
-	BeginDay          uint16
-	EndYear           uint16
-	EndMonth          uint16
-	EndDay            uint16
-	StartHour         uint16
-	StartMinute       uint16
-	MinutesDuration   uint32
-	MinutesInterval   uint32
-	Flags             uint32
-	TriggerType       uint32
-	TriggerSpecific0  uint16
-	TriggerSpecific1  uint16
-	TriggerSpecific2  uint16
-	Padding           uint16
-	Reserved2         uint16
-	Reserved3         uint16
+	TriggerSize      uint16 // always 0x30
+	Reserved1        uint16
+	BeginYear        uint16
+	BeginMonth       uint16
+	BeginDay         uint16
+	EndYear          uint16
+	EndMonth         uint16
+	EndDay           uint16
+	StartHour        uint16
+	StartMinute      uint16
+	MinutesDuration  uint32
+	MinutesInterval  uint32
+	Flags            uint32
+	TriggerType      uint32
+	TriggerSpecific0 uint16
+	TriggerSpecific1 uint16
+	TriggerSpecific2 uint16
+	Padding          uint16
+	Reserved2        uint16
+	Reserved3        uint16
 }
 
 // Jobs v.2 XML
@@ -217,16 +217,16 @@ var ReasonFlags = map[uint32]string{
 
 type Config struct {
 	Wazuh struct {
-		ManagerIP  string `yaml:"manager_ip"`
-		Port       int    `yaml:"port"`
-		Protocol   string `yaml:"protocol"`
-		Endpoint   string `yaml:"endpoint"`
-		Token      string `yaml:"token"`
-		VerifySSL  bool   `yaml:"verify_ssl"`
+		ManagerIP string `yaml:"manager_ip"`
+		Port      int    `yaml:"port"`
+		Protocol  string `yaml:"protocol"`
+		Endpoint  string `yaml:"endpoint"`
+		Token     string `yaml:"token"`
+		VerifySSL bool   `yaml:"verify_ssl"`
 	} `yaml:"wazuh"`
 
 	Paths struct {
-		Input  string `yaml:"input"`
+		Input string `yaml:"input"`
 	} `yaml:"paths"`
 }
 

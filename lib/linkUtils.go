@@ -36,21 +36,21 @@ const (
 )
 
 const (
-	Readonly         			= 1 << 0
-	Hidden                 		= 1 << 1
-	System                      = 1 << 2
-	Reserved1                   = 1 << 3
-	Directory                   = 1 << 4
-	Archive                     = 1 << 5
-	Reserved2                   = 1 << 6
-	Normal                      = 1 << 7
-	Temporary                   = 1 << 8
-	SparseFile                  = 1 << 9
-	ReparsePoint                = 1 << 10
-	Compressed                  = 1 << 11
-	Offline                     = 1 << 12
-	NotContentIndexed           = 1 << 13
-	Encrypted                   = 1 << 14
+	Readonly          = 1 << 0
+	Hidden            = 1 << 1
+	System            = 1 << 2
+	Reserved1         = 1 << 3
+	Directory         = 1 << 4
+	Archive           = 1 << 5
+	Reserved2         = 1 << 6
+	Normal            = 1 << 7
+	Temporary         = 1 << 8
+	SparseFile        = 1 << 9
+	ReparsePoint      = 1 << 10
+	Compressed        = 1 << 11
+	Offline           = 1 << 12
+	NotContentIndexed = 1 << 13
+	Encrypted         = 1 << 14
 )
 
 func ParseLinkFlags(flags uint32) map[string]bool {
@@ -87,21 +87,21 @@ func ParseLinkFlags(flags uint32) map[string]bool {
 
 func ParseFileAttributesFlags(attributes uint32) map[string]bool {
 	return map[string]bool{
-		"Readonly":           attributes&Readonly != 0,
-		"Hidden":             attributes&Hidden != 0,
-		"System":             attributes&System != 0,
-		"Reserved1":          attributes&Reserved1 != 0,
-		"Directory":          attributes&Directory != 0,
-		"Archive":            attributes&Archive != 0,
-		"Reserved2":          attributes&Reserved2 != 0,
-		"Normal":             attributes&Normal != 0,
-		"Temporary":          attributes&Temporary != 0,
-		"SparseFile":         attributes&SparseFile != 0,
-		"ReparsePoint":       attributes&ReparsePoint != 0,
-		"Compressed":         attributes&Compressed != 0,
-		"Offline":            attributes&Offline != 0,
-		"NotContentIndexed":  attributes&NotContentIndexed != 0,
-		"Encrypted":          attributes&Encrypted != 0,
+		"Readonly":          attributes&Readonly != 0,
+		"Hidden":            attributes&Hidden != 0,
+		"System":            attributes&System != 0,
+		"Reserved1":         attributes&Reserved1 != 0,
+		"Directory":         attributes&Directory != 0,
+		"Archive":           attributes&Archive != 0,
+		"Reserved2":         attributes&Reserved2 != 0,
+		"Normal":            attributes&Normal != 0,
+		"Temporary":         attributes&Temporary != 0,
+		"SparseFile":        attributes&SparseFile != 0,
+		"ReparsePoint":      attributes&ReparsePoint != 0,
+		"Compressed":        attributes&Compressed != 0,
+		"Offline":           attributes&Offline != 0,
+		"NotContentIndexed": attributes&NotContentIndexed != 0,
+		"Encrypted":         attributes&Encrypted != 0,
 	}
 }
 

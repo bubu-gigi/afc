@@ -96,7 +96,7 @@ func ParseDollarI(path string) (RecycleEntry, error) {
 		return RecycleEntry{}, err
 	}
 
-	deletedTime := time.Unix(0, int64(deletedRaw - 116444736000000000) * 100)
+	deletedTime := time.Unix(0, int64(deletedRaw-116444736000000000)*100)
 
 	utf16Bytes, err := io.ReadAll(f)
 	if err != nil {

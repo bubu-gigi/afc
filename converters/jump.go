@@ -111,15 +111,3 @@ func exportDestListToCsv(source string, entries []map[string]string, config *con
 		log.Printf("[INFO] Sent DestList CSV for %s with %d records", source, len(rows))
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-

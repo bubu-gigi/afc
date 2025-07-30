@@ -59,7 +59,7 @@ func FindNullTerminator(data []byte) int {
 			return i
 		}
 	}
-	return len(data) 
+	return len(data)
 }
 
 func FindNullTerminatorUTF16(data []byte) int {
@@ -80,8 +80,8 @@ func DecodeUTF16String(b []byte) string {
 }
 
 func FileTimeToString(ft uint64) string {
-	const windowsToUnixOffset = 116444736000000000 
-	unixNano := (ft - windowsToUnixOffset) * 100    
+	const windowsToUnixOffset = 116444736000000000
+	unixNano := (ft - windowsToUnixOffset) * 100
 	t := time.Unix(0, int64(unixNano)).UTC()
 	return t.Format("2006-01-02 15:04:05.0000000")
 }
@@ -105,8 +105,6 @@ func IsPrintable(s string) bool {
 	return true
 }
 
-
-
 //VELOCIDEX
 
 func GetMFTEntry(ntfs_ctx *parser.NTFSContext, filename string) (*parser.MFT_ENTRY, error) {
@@ -124,7 +122,6 @@ func GetMFTEntry(ntfs_ctx *parser.NTFSContext, filename string) (*parser.MFT_ENT
 		return dir.Open(ntfs_ctx, filename)
 	}
 }
-
 
 func ReadFullUnicodeString(f *os.File) (string, error) {
 	var charCount uint16
@@ -164,8 +161,8 @@ func FormatGUID(b []byte) string {
 	d1 := binary.LittleEndian.Uint32(b[0:4])
 	d2 := binary.LittleEndian.Uint16(b[4:6])
 	d3 := binary.LittleEndian.Uint16(b[6:8])
-	d4 := b[8:10] 
-	d5 := b[10:16] 
+	d4 := b[8:10]
+	d5 := b[10:16]
 
 	return fmt.Sprintf("%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
 		d1, d2, d3,

@@ -16,12 +16,12 @@ import (
 
 type Config struct {
 	Wazuh struct {
-		ManagerIP  string `yaml:"manager_ip"`
-		Port       int    `yaml:"port"`
-		Protocol   string `yaml:"protocol"`
-		Endpoint   string `yaml:"endpoint"`
-		Token      string `yaml:"token"`
-		VerifySSL  bool   `yaml:"verify_ssl"`
+		ManagerIP string `yaml:"manager_ip"`
+		Port      int    `yaml:"port"`
+		Protocol  string `yaml:"protocol"`
+		Endpoint  string `yaml:"endpoint"`
+		Token     string `yaml:"token"`
+		VerifySSL bool   `yaml:"verify_ssl"`
 	} `yaml:"wazuh"`
 
 	Paths struct {

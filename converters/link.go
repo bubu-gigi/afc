@@ -13,12 +13,12 @@ import (
 )
 
 var (
-	shellLink            ShellLink
-	linkFlags            map[string]bool
-	fileAttributesFlags  map[string]bool
-	hotKeyLowByte        string
-	hotKeyHighByte       string
-	parsedItems          []string
+	shellLink           ShellLink
+	linkFlags           map[string]bool
+	fileAttributesFlags map[string]bool
+	hotKeyLowByte       string
+	hotKeyHighByte      string
+	parsedItems         []string
 )
 
 func ConvertLinkToCsv(files []string, config *config.Config) {

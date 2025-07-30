@@ -17,27 +17,21 @@ import (
 
 var (
 	prefetch          = []string{}
-	jumpList          = []string{} 
-	registry          = []string{} 
-	evtx              = []string{} 
-	powershellHistory = []string{} 
+	jumpList          = []string{}
+	registry          = []string{}
+	evtx              = []string{}
+	powershellHistory = []string{}
 	scheduledTasks    = []string{}
-	lnkFiles          = []string{} 
+	lnkFiles          = []string{}
 	recycleBin        = []string{}
 	usnJrnl           = []string{}
-	scheduledTaskXMLs = []string{} 
-	mft               = []string{} 
-)
-
-var (
-	enableLogging     bool
-	dumpRequestBodies bool
-	skipWazuhSend     bool	
-	artifactFilter    []string
+	scheduledTaskXMLs = []string{}
+	mft               = []string{}
 )
 
 func main() {
 	printBanner()
+	printAvailableArtifacts()
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	var rootCmd = &cobra.Command{
@@ -45,7 +39,7 @@ func main() {
 		Short: "AFC - Artifact Forensics Collector",
 		Long:  `A tool for gather, analyze and elaborate Windows artifacts`,
 		Run: func(cmd *cobra.Command, args []string) {
-			if enableLogging {
+			if flags.EnableLogging {
 				logFile, err := os.OpenFile("afc.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 				if err != nil {
 					fmt.Printf("Error opening log file: %v\n", err)
@@ -70,7 +64,6 @@ func main() {
 	}
 }
 
-
 func run() {
 
 	cfg, err := config.Load("config.yaml")
@@ -79,8 +72,9 @@ func run() {
 		os.Exit(1)
 	}
 
-
-	fmt.Printf("📡 Connecting to %s:%d...\n", cfg.Wazuh.ManagerIP, cfg.Wazuh.Port)
+	if flags.SkipWazuhSend {
+		fmt.Printf("📡 Connecting to %s:%d...\n", cfg.Wazuh.ManagerIP, cfg.Wazuh.Port)
+	}
 
 	collectArtifacts(cfg.Paths.Input)
 
@@ -108,6 +102,7 @@ func collectArtifacts(kdest string) {
 		lowerPath := strings.ToLower(path)
 
 		switch {
+
 		case strings.HasSuffix(lowerPath, ".pf"):
 			prefetch = append(prefetch, path)
 
@@ -149,78 +144,106 @@ func collectArtifacts(kdest string) {
 func convert(cfg *config.Config) {
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		converters.ConvertEvtxToCsv(evtx, cfg)
-		fmt.Println("Evtx converted")
-	}()
+	if shouldProcess("evtx") {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			converters.ConvertEvtxToCsv(evtx, cfg)
+			fmt.Println("Evtx converted")
+		}()
+	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		converters.ConvertRegistryHiveToCsv(registry, cfg)
-		fmt.Println("Registry converted")
-	}()
+	if shouldProcess("hive") {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			converters.ConvertRegistryHiveToCsv(registry, cfg)
+			fmt.Println("Registry converted")
+		}()
+	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		converters.ConvertMFTToCsv(mft, cfg)
-		fmt.Println("MFT converted")
-	}()
+	if shouldProcess("mft") {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			converters.ConvertMFTToCsv(mft, cfg)
+			fmt.Println("MFT converted")
+		}()
+	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		converters.ConvertPrefetchToCsv(prefetch, cfg)
-		fmt.Println("Prefetch converted")
-	}()
+	if shouldProcess("pf") {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			converters.ConvertPrefetchToCsv(prefetch, cfg)
+			fmt.Println("Prefetch converted")
+		}()
+	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		converters.ConvertTaskJobToCsv(scheduledTasks, cfg)
-		fmt.Println("Task Jobs converted")
-	}()
+	if shouldProcess("job") {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			converters.ConvertTaskJobToCsv(scheduledTasks, cfg)
+			fmt.Println("Task Jobs converted")
+		}()
+	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		converters.ConvertTaskXmlToCsv(scheduledTaskXMLs, cfg)
-		fmt.Println("Task Xml converted")
-	}()
+	if shouldProcess("taskxml") {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			converters.ConvertTaskXmlToCsv(scheduledTaskXMLs, cfg)
+			fmt.Println("Task Xml converted")
+		}()
+	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		converters.ConvertRecycleBinToCsv(recycleBin, cfg)
-		fmt.Println("Recycle Bin converted")
-	}()
+	if shouldProcess("rbin") {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			converters.ConvertRecycleBinToCsv(recycleBin, cfg)
+			fmt.Println("Recycle Bin converted")
+		}()
+	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		converters.ConvertLinkToCsv(lnkFiles, cfg)
-		fmt.Println("Link converted")
-	}()
+	if shouldProcess("lnk") {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			converters.ConvertLinkToCsv(lnkFiles, cfg)
+			fmt.Println("Link converted")
+		}()
+	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		converters.ConvertJumpToCsv(jumpList, cfg)
-		fmt.Println("Jump List converted")
-	}()
+	if shouldProcess("jl") {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			converters.ConvertJumpToCsv(jumpList, cfg)
+			fmt.Println("Jump List converted")
+		}()
+	}
 
+	if shouldProcess("ps") {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			converters.ConvertPSHistoryToCsv(powershellHistory, cfg)
+			fmt.Println("Powershell History converted")
+		}()
+	}
 
-  	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		converters.ConvertPSHistoryToCsv(powershellHistory, cfg)
-		fmt.Println("Powershell History converted")
-	}()
-	
 	wg.Wait()
+}
+
+func shouldProcess(name string) bool {
+	for _, f := range flags.ArtifactFilter {
+		if f == "all" || strings.EqualFold(f, name) {
+			return true
+		}
+	}
+	return false
 }
 
 func printBanner() {
@@ -230,4 +253,12 @@ func printBanner() {
 ║       AFC - Artifact Collector     ║
 ║           Powered by Go            ║
 ╚════════════════════════════════════╝`)
+}
+
+func printAvailableArtifacts() {
+	fmt.Println("📦 Available artifact types for --artifacts flag:")
+	for _, art := range flags.ValidArtifacts {
+		fmt.Printf("  - %s\n", art)
+	}
+	fmt.Print("  - all (process everything)\n")
 }
