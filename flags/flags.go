@@ -17,5 +17,6 @@ var (
 		"lnk",
 		"jl",
 		"ps",
+		"journal",
 	}
 )

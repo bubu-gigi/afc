@@ -3,6 +3,7 @@ package utils
 import (
 	"afc/config"
 	"bytes"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -29,6 +30,16 @@ type Config struct {
 	} `yaml:"paths"`
 }
 
+type FileMetadata struct {
+	Filename   string `json:"filename"`
+	Abspath    string `json:"abspath"`
+	Size       int64  `json:"size"`
+	ModTime    string `json:"modtime"`     
+	SHA256     string `json:"sha256"`       
+	Mode       string `json:"mode"`         
+	IsSymlink  bool   `json:"is_symlink"`   
+}
+
 func SendCsvToWazuh(cfg *config.Config, headers []string, rows [][]string) error {
 	const (
 		maxEventsPerRequest  = 100
@@ -47,12 +58,16 @@ func SendCsvToWazuh(cfg *config.Config, headers []string, rows [][]string) error
 	url := fmt.Sprintf("%s://%s:%d%s?pretty=true&wait_for_complete=true",
 		cfg.Wazuh.Protocol, cfg.Wazuh.ManagerIP, cfg.Wazuh.Port, cfg.Wazuh.Endpoint)
 
-	// Crea la directory body se non esiste
 	if err := os.MkdirAll("body", os.ModePerm); err != nil {
 		log.Printf("file|error creating body dir: %v", err)
 	}
 
-	var events []map[string]string
+		metadata, err := getFileMetadata(cfg.Paths.Input)
+	if err != nil {
+		log.Printf("file|error extracting file metadata: %v", err)
+	}
+
+	var events []map[string]any
 	for idx, row := range rows {
 		if len(row) != len(headers) {
 			log.Printf("csv|warning: riga %d ha lunghezza diversa dai headers, saltata", idx)
@@ -62,7 +77,10 @@ func SendCsvToWazuh(cfg *config.Config, headers []string, rows [][]string) error
 		for i, h := range headers {
 			event[h] = row[i]
 		}
-		events = append(events, event)
+		events = append(events, map[string]interface{}{
+			"event":    event,
+			"metadata": metadata,
+		})
 	}
 
 	for i := 0; i < len(events); i += maxEventsPerRequest {
@@ -91,7 +109,6 @@ func SendCsvToWazuh(cfg *config.Config, headers []string, rows [][]string) error
 			continue
 		}
 
-		// Salva su file
 		fileName := fmt.Sprintf("body/batch_%d_%d.json", i, end)
 		if err := os.WriteFile(filepath.Clean(fileName), body, 0644); err != nil {
 			log.Printf("file|error saving batch %d-%d to file: %v", i, end, err)
@@ -139,4 +156,38 @@ func SendCsvToWazuh(cfg *config.Config, headers []string, rows [][]string) error
 	}
 
 	return nil
+}
+
+func getFileMetadata(path string) (FileMetadata, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return FileMetadata{}, err
+	}
+
+	info, err := os.Lstat(path)
+	if err != nil {
+		return FileMetadata{}, err
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return FileMetadata{}, err
+	}
+	defer f.Close()
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, f); err != nil {
+		return FileMetadata{}, err
+	}
+	hash := fmt.Sprintf("%x", hasher.Sum(nil))
+
+	return FileMetadata{
+		Filename:  info.Name(),
+		Abspath:   absPath,
+		Size:      info.Size(),
+		ModTime:   info.ModTime().Format(time.RFC3339),
+		SHA256:    hash,
+		Mode:      info.Mode().String(),
+		IsSymlink: info.Mode()&os.ModeSymlink != 0,
+	}, nil
 }
