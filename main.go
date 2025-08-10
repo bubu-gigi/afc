@@ -144,7 +144,7 @@ func collectArtifacts(kdest string) {
 func convert(cfg *config.Config) {
 	var wg sync.WaitGroup
 
-	if shouldProcess("evtx") {
+	if shouldProcess("evtx") && len(evtx) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -153,7 +153,7 @@ func convert(cfg *config.Config) {
 		}()
 	}
 
-	if shouldProcess("hive") {
+	if shouldProcess("hive") && len(registry) > 0{
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -162,7 +162,7 @@ func convert(cfg *config.Config) {
 		}()
 	}
 
-	if shouldProcess("mft") {
+	if shouldProcess("mft") && len(mft) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -171,7 +171,7 @@ func convert(cfg *config.Config) {
 		}()
 	}
 
-	if shouldProcess("pf") {
+	if shouldProcess("pf") && len(prefetch) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -180,7 +180,7 @@ func convert(cfg *config.Config) {
 		}()
 	}
 
-	if shouldProcess("job") {
+	if shouldProcess("job") && len(scheduledTasks) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -189,7 +189,7 @@ func convert(cfg *config.Config) {
 		}()
 	}
 
-	if shouldProcess("taskxml") {
+	if shouldProcess("taskxml") && len(scheduledTaskXMLs) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -198,7 +198,7 @@ func convert(cfg *config.Config) {
 		}()
 	}
 
-	if shouldProcess("rbin") {
+	if shouldProcess("rbin") && len(recycleBin) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -207,7 +207,7 @@ func convert(cfg *config.Config) {
 		}()
 	}
 
-	if shouldProcess("lnk") {
+	if shouldProcess("lnk") && len(lnkFiles) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -216,7 +216,7 @@ func convert(cfg *config.Config) {
 		}()
 	}
 
-	if shouldProcess("jl") {
+	if shouldProcess("jl") && len(jumpList) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -225,7 +225,7 @@ func convert(cfg *config.Config) {
 		}()
 	}
 
-	if shouldProcess("ps") {
+	if shouldProcess("ps") && len(powershellHistory) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -234,7 +234,27 @@ func convert(cfg *config.Config) {
 		}()
 	}
 
+	if shouldProcess("ps") && len(powershellHistory) > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			converters.ConvertPSHistoryToCsv(powershellHistory, cfg)
+			fmt.Println("Powershell History converted")
+		}()
+	}
+
+	if shouldProcess("journal") && len(usnJrnl) > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			converters.ConvertUsnJrnlToCsv(usnJrnl, cfg)
+			fmt.Println("Journal converted")
+		}()
+	}
+
 	wg.Wait()
+
+	fmt.Println("Execution completed")
 }
 
 func shouldProcess(name string) bool {
