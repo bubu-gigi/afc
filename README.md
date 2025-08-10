@@ -26,15 +26,7 @@ It supports a wide range of formats including `EVTX`, `Registry Hives`, `Prefetc
 - Recycle Bin (`$I`, `$R`)
 - MFT (Master File Table)
 - LNK (Shell Link)
-- Windows Timeline (`ActivitiesCache.db`)
-- SRUM
-- Amcache (`amcache.hve`)
-- WMI Logs (`.etl`)
-- Event Trace Logs (`.etl`)
-- Defender logs (`.log`)
-- Thumbcache
-- BITS jobs
-- RDP Cache
+- UsnJrnl
 
 ---
 
@@ -80,7 +72,7 @@ cd afc
 go run .
 ```
 
-5. The resulting CSV will be saved temp in memory and as soon as possible send to the given wazuh endpoint.
+5. The resulting data will be saved temp in memory and as soon as possible send to the given wazuh endpoint.
 
 
 ## 🤖 Requirements
