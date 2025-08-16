@@ -2,6 +2,7 @@ package converters
 
 import (
 	"afc/config"
+	"afc/flags"
 	utils "afc/lib"
 	"encoding/json"
 	"fmt"
@@ -45,15 +46,15 @@ var fieldsToShorten = map[string]bool{
 	"Payload":         true,
 }
 
-func ConvertEvtxToCsv(files []string, config *config.Config) {
+func ConvertEvtxToCsv(files []string, config *config.Config, opts *flags.GlobalOptions) {
 	for _, file := range files {
-		if err := convertEvtx(file, config); err != nil {
+		if err := convertEvtx(file, config, opts); err != nil {
 			log.Printf("[ERROR] Failed to convert EVTX file %s: %v", file, err)
 		}
 	}
 }
 
-func convertEvtx(file string, config *config.Config) error {
+func convertEvtx(file string, config *config.Config, opts *flags.GlobalOptions) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return fmt.Errorf("cannot open EVTX file %s: %w", file, err)
@@ -156,11 +157,18 @@ func convertEvtx(file string, config *config.Config) error {
 		allRows = append(allRows, row)
 	}
 
-	err = utils.SendCsvToWazuh(config, shortKeys, allRows)
-	if err != nil {
-		return fmt.Errorf("failed to send EVTX CSV to Wazuh: %w", err)
+	if opts.SkipWazuhSend {
+		out, err := utils.SaveCsvToDisk(config, "evtx", file, shortKeys, allRows)
+		if err != nil {
+			return fmt.Errorf("failed to save EVTX CSV: %w", err)
+		}
+		log.Printf("[INFO] CSV saved to %s", out)
+	} else {
+		err = utils.SendCsvToWazuh(config, shortKeys, allRows)
+		if err != nil {
+			return fmt.Errorf("failed to send EVTX CSV to Wazuh: %w", err)
+		}
 	}
-
 	log.Printf("[INFO] Converted %d events from file %s", recordCount, file)
 	return nil
 }
