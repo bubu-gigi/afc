@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"afc/config"
+	"afc/flags"
 	"encoding/binary"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"log"
@@ -169,4 +172,86 @@ func FormatGUID(b []byte) string {
 		d4[0], d4[1],
 		d5[0], d5[1], d5[2], d5[3], d5[4], d5[5],
 	)
+}
+
+func IsRegistryHive(path string) bool {
+	filename := strings.ToLower(filepath.Base(path))
+
+	switch filename {
+	case "sam", "software", "security", "system":
+		return true
+	default:
+		return strings.Contains(filename, "ntuser.dat")
+	}
+}
+
+func ShouldProcessArtifact(name string) bool {
+	for _, f := range flags.ArtifactFilter {
+		if f == "all" || strings.EqualFold(f, name) {
+			return true
+		}
+	}
+	return false
+}
+
+func SaveCsvToDisk(cfg *config.Config, artifactSubdir string, srcFilename string, headers []string, rows [][]string) (string, error) {
+	outRoot := "./out"
+	if cfg != nil {
+		type hasPaths struct {
+			Paths struct {
+				Output string
+			}
+		}
+		if cfgTyped, ok := any(cfg).(*hasPaths); ok && cfgTyped.Paths.Output != "" {
+			outRoot = cfgTyped.Paths.Output
+		}
+	}
+
+	outDir := filepath.Join(outRoot, artifactSubdir)
+
+	base := strings.TrimSuffix(filepath.Base(srcFilename), filepath.Ext(srcFilename)) + ".csv"
+	outPath := filepath.Join(outDir, base)
+
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return "", fmt.Errorf("cannot create output dir %s: %w", outDir, err)
+	}
+
+	f, err := os.Create(outPath)
+	if err != nil {
+		return "", fmt.Errorf("cannot create CSV file %s: %w", outPath, err)
+	}
+	defer f.Close()
+
+	w := csv.NewWriter(f)
+	if len(headers) > 0 {
+		if err := w.Write(headers); err != nil {
+			return "", fmt.Errorf("cannot write CSV header to %s: %w", outPath, err)
+		}
+	}
+	for _, r := range rows {
+		if err := w.Write(r); err != nil {
+			return "", fmt.Errorf("cannot write CSV row to %s: %w", outPath, err)
+		}
+	}
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return "", fmt.Errorf("csv writer error for %s: %w", outPath, err)
+	}
+	return outPath, nil
+}
+
+func HandleArtifactConverted (cfg *config.Config, artifactName string, file string, headers []string, rows [][]string, skipWazuh bool) error {
+	if skipWazuh {
+    	out, err := SaveCsvToDisk(cfg, artifactName, file, headers, rows)
+		if err != nil {
+			return fmt.Errorf("failed to save %s CSV: %w", artifactName, err)
+		}
+		log.Printf("[INFO] CSV saved to %s (records: %d)", out, len(rows))
+	} else {
+		if err := SendCsvToWazuh(cfg, headers, rows); err != nil {
+			return fmt.Errorf("failed to send %s to Wazuh: %w", artifactName, err)
+		}
+		log.Printf("[INFO] Converted %s %s with %d records", artifactName, file, len(rows))
+	}
+	return nil
 }
