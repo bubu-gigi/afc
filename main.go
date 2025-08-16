@@ -4,6 +4,7 @@ import (
 	"afc/config"
 	"afc/converters"
 	"afc/flags"
+	utils "afc/lib"
 	"fmt"
 	"log"
 	"os"
@@ -72,24 +73,17 @@ func run() {
 		os.Exit(1)
 	}
 
-	if flags.SkipWazuhSend {
-		fmt.Printf("📡 Connecting to %s:%d...\n", cfg.Wazuh.ManagerIP, cfg.Wazuh.Port)
+	if !flags.SkipWazuhSend {
+		fmt.Printf("Connecting to %s:%d...\n", cfg.Wazuh.ManagerIP, cfg.Wazuh.Port)
 	}
 
 	collectArtifacts(cfg.Paths.Input)
 
-	convert(cfg)
-}
-
-func isRegistryHive(path string) bool {
-	filename := strings.ToLower(filepath.Base(path))
-
-	switch filename {
-	case "sam", "software", "security", "system":
-		return true
-	default:
-		return strings.Contains(filename, "ntuser.dat")
+	opts := flags.GlobalOptions{
+		DumpRequestBodies: flags.DumpRequestBodies,
+		SkipWazuhSend:     flags.SkipWazuhSend,
 	}
+	convert(cfg, &opts)
 }
 
 func collectArtifacts(kdest string) {
@@ -106,7 +100,7 @@ func collectArtifacts(kdest string) {
 		case strings.HasSuffix(lowerPath, ".pf"):
 			prefetch = append(prefetch, path)
 
-		case isRegistryHive(path):
+		case utils.IsRegistryHive(path):
 			registry = append(registry, path)
 
 		case strings.Contains(lowerPath, "application.evtx") && !strings.Contains(lowerPath, "slack"):
@@ -141,113 +135,113 @@ func collectArtifacts(kdest string) {
 	})
 }
 
-func convert(cfg *config.Config) {
+func convert(cfg *config.Config, opts *flags.GlobalOptions) {
 	var wg sync.WaitGroup
 
-	if shouldProcess("evtx") && len(evtx) > 0 {
+	if utils.ShouldProcessArtifact("evtx") && len(evtx) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			converters.ConvertEvtxToCsv(evtx, cfg)
+			converters.ConvertEvtxToCsv(evtx, cfg, opts)
 			fmt.Println("Evtx converted")
 		}()
 	}
 
-	if shouldProcess("hive") && len(registry) > 0{
+	if utils.ShouldProcessArtifact("hive") && len(registry) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			converters.ConvertRegistryHiveToCsv(registry, cfg)
+			converters.ConvertRegistryHiveToCsv(registry, cfg, opts)
 			fmt.Println("Registry converted")
 		}()
 	}
 
-	if shouldProcess("mft") && len(mft) > 0 {
+	if utils.ShouldProcessArtifact("mft") && len(mft) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			converters.ConvertMFTToCsv(mft, cfg)
+			converters.ConvertMFTToCsv(mft, cfg, opts)
 			fmt.Println("MFT converted")
 		}()
 	}
 
-	if shouldProcess("pf") && len(prefetch) > 0 {
+	if utils.ShouldProcessArtifact("pf") && len(prefetch) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			converters.ConvertPrefetchToCsv(prefetch, cfg)
+			converters.ConvertPrefetchToCsv(prefetch, cfg, opts)
 			fmt.Println("Prefetch converted")
 		}()
 	}
 
-	if shouldProcess("job") && len(scheduledTasks) > 0 {
+	if utils.ShouldProcessArtifact("job") && len(scheduledTasks) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			converters.ConvertTaskJobToCsv(scheduledTasks, cfg)
+			converters.ConvertTaskJobToCsv(scheduledTasks, cfg, opts)
 			fmt.Println("Task Jobs converted")
 		}()
 	}
 
-	if shouldProcess("taskxml") && len(scheduledTaskXMLs) > 0 {
+	if utils.ShouldProcessArtifact("taskxml") && len(scheduledTaskXMLs) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			converters.ConvertTaskXmlToCsv(scheduledTaskXMLs, cfg)
+			converters.ConvertTaskXmlToCsv(scheduledTaskXMLs, cfg, opts)
 			fmt.Println("Task Xml converted")
 		}()
 	}
 
-	if shouldProcess("rbin") && len(recycleBin) > 0 {
+	if utils.ShouldProcessArtifact("rbin") && len(recycleBin) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			converters.ConvertRecycleBinToCsv(recycleBin, cfg)
+			converters.ConvertRecycleBinToCsv(recycleBin, cfg, opts)
 			fmt.Println("Recycle Bin converted")
 		}()
 	}
 
-	if shouldProcess("lnk") && len(lnkFiles) > 0 {
+	if utils.ShouldProcessArtifact("lnk") && len(lnkFiles) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			converters.ConvertLinkToCsv(lnkFiles, cfg)
+			converters.ConvertLinkToCsv(lnkFiles, cfg, opts)
 			fmt.Println("Link converted")
 		}()
 	}
 
-	if shouldProcess("jl") && len(jumpList) > 0 {
+	if utils.ShouldProcessArtifact("jl") && len(jumpList) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			converters.ConvertJumpToCsv(jumpList, cfg)
+			converters.ConvertJumpToCsv(jumpList, cfg, opts)
 			fmt.Println("Jump List converted")
 		}()
 	}
 
-	if shouldProcess("ps") && len(powershellHistory) > 0 {
+	if utils.ShouldProcessArtifact("ps") && len(powershellHistory) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			converters.ConvertPSHistoryToCsv(powershellHistory, cfg)
+			converters.ConvertPSHistoryToCsv(powershellHistory, cfg, opts)
 			fmt.Println("Powershell History converted")
 		}()
 	}
 
-	if shouldProcess("ps") && len(powershellHistory) > 0 {
+	if utils.ShouldProcessArtifact("ps") && len(powershellHistory) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			converters.ConvertPSHistoryToCsv(powershellHistory, cfg)
+			converters.ConvertPSHistoryToCsv(powershellHistory, cfg, opts)
 			fmt.Println("Powershell History converted")
 		}()
 	}
 
-	if shouldProcess("journal") && len(usnJrnl) > 0 {
+	if utils.ShouldProcessArtifact("journal") && len(usnJrnl) > 0 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			converters.ConvertUsnJrnlToCsv(usnJrnl, cfg)
+			converters.ConvertUsnJrnlToCsv(usnJrnl, cfg, opts)
 			fmt.Println("Journal converted")
 		}()
 	}
@@ -255,15 +249,6 @@ func convert(cfg *config.Config) {
 	wg.Wait()
 
 	fmt.Println("Execution completed")
-}
-
-func shouldProcess(name string) bool {
-	for _, f := range flags.ArtifactFilter {
-		if f == "all" || strings.EqualFold(f, name) {
-			return true
-		}
-	}
-	return false
 }
 
 func printBanner() {
