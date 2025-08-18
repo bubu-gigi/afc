@@ -157,7 +157,7 @@ func convertEvtx(file string, config *config.Config, opts *flags.GlobalOptions) 
 		allRows = append(allRows, row)
 	}
 
-	utils.HandleArtifactConverted(config, "evtx", file, shortKeys, allRows, opts.SkipWazuhSend)
+	utils.HandleArtifactConverted(config, "evtx", file, shortKeys, allRows, opts)
 	log.Printf("[INFO] Converted %d events from file %s", recordCount, file)
 	return nil
 }

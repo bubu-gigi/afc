@@ -104,7 +104,7 @@ func convertLink(file string, config *config.Config, opts *flags.GlobalOptions) 
 
 	rows := [][]string{record}
 
-	utils.HandleArtifactConverted(config, "link", file, headers, rows, opts.SkipWazuhSend)
+	utils.HandleArtifactConverted(config, "link", file, headers, rows, opts)
 	log.Printf("[INFO] Converted LNK file %s", file)
 	return nil
 }

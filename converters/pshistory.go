@@ -42,6 +42,6 @@ func convertPSHistory(file string, config *config.Config, opts *flags.GlobalOpti
 		return fmt.Errorf("scan error: %w", err)
 	}
 
-	utils.HandleArtifactConverted(config, "pshistory", file, headers, rows, opts.SkipWazuhSend)
+	utils.HandleArtifactConverted(config, "pshistory", file, headers, rows, opts)
 	return nil
 }

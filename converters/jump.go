@@ -106,5 +106,5 @@ func exportDestList(file string, entries []map[string]string, config *config.Con
 		})
 	}
 
-	utils.HandleArtifactConverted(config, "jumpList", file, headers, rows, opts.SkipWazuhSend)
+	utils.HandleArtifactConverted(config, "jumpList", file, headers, rows, opts)
 }

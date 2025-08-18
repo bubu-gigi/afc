@@ -240,15 +240,15 @@ func SaveCsvToDisk(cfg *config.Config, artifactSubdir string, srcFilename string
 	return outPath, nil
 }
 
-func HandleArtifactConverted(cfg *config.Config, artifactName string, file string, headers []string, rows [][]string, skipWazuh bool) error {
-	if skipWazuh {
+func HandleArtifactConverted(cfg *config.Config, artifactName string, file string, headers []string, rows [][]string, opts *flags.GlobalOptions) error {
+	if opts.SkipWazuhSend {
     	out, err := SaveCsvToDisk(cfg, artifactName, file, headers, rows)
 		if err != nil {
 			return fmt.Errorf("failed to save %s CSV: %w", artifactName, err)
 		}
 		log.Printf("[INFO] CSV saved to %s (records: %d)", out, len(rows))
 	} else {
-		if err := SendCsvToWazuh(cfg, headers, rows); err != nil {
+		if err := SendCsvToWazuh(cfg, headers, rows, opts.DumpRequestBodies); err != nil {
 			return fmt.Errorf("failed to send %s to Wazuh: %w", artifactName, err)
 		}
 		log.Printf("[INFO] Converted %s %s with %d records", artifactName, file, len(rows))

@@ -25,7 +25,7 @@ func ConvertRecycleBinToCsv(files []string, config *config.Config, opts *flags.G
 				log.Printf("recyclebin: error parsing $I file %s: %v", file, err)
 				continue
 			}
-			if err := sendDollarIToWazuh(file, entry, config); err != nil {
+			if err := sendDollarI(file, entry, config, opts); err != nil {
 				log.Printf("recyclebin: error sending $I file %s to Wazuh: %v", file, err)
 			}
 
@@ -35,14 +35,14 @@ func ConvertRecycleBinToCsv(files []string, config *config.Config, opts *flags.G
 				log.Printf("recyclebin: error parsing INFO2 file %s: %v", file, err)
 				continue
 			}
-			if err := sendINFO2ToWazuh(file, entries, config); err != nil {
+			if err := sendINFO2(file, entries, config, opts); err != nil {
 				log.Printf("recyclebin: error sending INFO2 file %s to Wazuh: %v", file, err)
 			}
 		}
 	}
 }
 
-func sendDollarIToWazuh(file string, entry RecycleEntry, config *config.Config) error {
+func sendDollarI(file string, entry RecycleEntry, config *config.Config, opts *flags.GlobalOptions) error {
 	headers := []string{"Version", "FileSize", "DeletedTime", "OriginalPath", "SourceFile", "ParsedAt"}
 	row := []string{
 		fmt.Sprintf("%d", entry.Version),
@@ -52,10 +52,10 @@ func sendDollarIToWazuh(file string, entry RecycleEntry, config *config.Config) 
 		file,
 		time.Now().Format(time.RFC3339),
 	}
-	return utils.SendCsvToWazuh(config, headers, [][]string{row})
+	return utils.SendCsvToWazuh(config, headers, [][]string{row}, opts.DumpRequestBodies)
 }
 
-func sendINFO2ToWazuh(file string, entries []Info2Entry, config *config.Config) error {
+func sendINFO2(file string, entries []Info2Entry, config *config.Config, opts *flags.GlobalOptions) error {
 	headers := []string{
 		"FileIndex", "DriveNumber", "FileNameASCII", "FileNameUTF16", "DeletedTime", "FileSize", "SourceFile", "ParsedAt",
 	}
@@ -73,7 +73,7 @@ func sendINFO2ToWazuh(file string, entries []Info2Entry, config *config.Config) 
 		}
 		rows = append(rows, row)
 	}
-	return utils.SendCsvToWazuh(config, headers, rows)
+	return utils.SendCsvToWazuh(config, headers, rows, opts.DumpRequestBodies)
 }
 
 func ParseDollarI(path string) (RecycleEntry, error) {

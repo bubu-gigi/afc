@@ -105,7 +105,7 @@ func convertHive(file string, cfg *config.Config, opts *flags.GlobalOptions) err
 
 	walk(root, `\`)
 
-	utils.HandleArtifactConverted(cfg, "hive", file, headers, rows, opts.SkipWazuhSend)
+	utils.HandleArtifactConverted(cfg, "hive", file, headers, rows, opts)
 	return nil
 }
 

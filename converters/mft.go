@@ -106,7 +106,7 @@ func convertMFT(file string, cfg *config.Config, opts *flags.GlobalOptions) erro
 		return nil
 	}
 
-	utils.HandleArtifactConverted(cfg, "mft", file, headers, rows, opts.SkipWazuhSend)
+	utils.HandleArtifactConverted(cfg, "mft", file, headers, rows, opts)
 	return nil
 }
 

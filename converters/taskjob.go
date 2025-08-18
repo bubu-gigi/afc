@@ -71,7 +71,7 @@ func convertTaskJob(file string, cfg *config.Config, opts *flags.GlobalOptions) 
 		fmt.Sprintf("%d", len(triggers)),
 	}
 
-	utils.HandleArtifactConverted(cfg, "job", file, headers, [][]string{record}, opts.SkipWazuhSend)
+	utils.HandleArtifactConverted(cfg, "job", file, headers, [][]string{record}, opts)
 
 	triggerHeaders := []string{
 		"Index", "BeginDate", "EndDate", "StartTime", "DurationMin", "IntervalMin",
@@ -102,7 +102,7 @@ func convertTaskJob(file string, cfg *config.Config, opts *flags.GlobalOptions) 
 		})
 	}
 
-	utils.HandleArtifactConverted(cfg, "job", file, triggerHeaders, triggerRows, opts.SkipWazuhSend)
+	utils.HandleArtifactConverted(cfg, "job", file, triggerHeaders, triggerRows, opts)
 
 	return nil
 }

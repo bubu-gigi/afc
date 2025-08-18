@@ -68,7 +68,7 @@ func convertTaskXml(file string, cfg *config.Config, opts *flags.GlobalOptions) 
 		triggerEnabled,
 	}
 
-	utils.HandleArtifactConverted(cfg, "taskxml", file, headers, [][]string{record}, opts.SkipWazuhSend)
+	utils.HandleArtifactConverted(cfg, "taskxml", file, headers, [][]string{record}, opts)
 
 	return nil
 }

@@ -74,7 +74,7 @@ func convertUsnJrnl(file string, config *config.Config, opts *flags.GlobalOption
 		"SourceFile", "ParsedAt",
 	}
 
-	utils.HandleArtifactConverted(config, "journal", file, headers, rows, opts.SkipWazuhSend)
+	utils.HandleArtifactConverted(config, "journal", file, headers, rows, opts)
 
 
 	return nil

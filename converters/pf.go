@@ -52,7 +52,7 @@ func convertPrefetch(file string, cfg *config.Config, opts *flags.GlobalOptions)
 		time.Now().Format(time.RFC3339),
 	}
 
-	utils.HandleArtifactConverted(cfg, "prefetch", file, headers, [][]string{row}, opts.SkipWazuhSend)
+	utils.HandleArtifactConverted(cfg, "prefetch", file, headers, [][]string{row}, opts)
 	log.Printf("[INFO] Converted prefetch %s with %d records", file, len([][]string{row}))
 	return nil
 }
