@@ -15,21 +15,6 @@ import (
 	"time"
 )
 
-type Config struct {
-	Wazuh struct {
-		ManagerIP string `yaml:"manager_ip"`
-		Port      int    `yaml:"port"`
-		Protocol  string `yaml:"protocol"`
-		Endpoint  string `yaml:"endpoint"`
-		Token     string `yaml:"token"`
-		VerifySSL bool   `yaml:"verify_ssl"`
-	} `yaml:"wazuh"`
-
-	Paths struct {
-		Input string `yaml:"input"`
-	} `yaml:"paths"`
-}
-
 type FileMetadata struct {
 	Filename   string `json:"filename"`
 	Abspath    string `json:"abspath"`
