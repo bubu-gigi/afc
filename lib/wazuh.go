@@ -25,7 +25,7 @@ type FileMetadata struct {
 	IsSymlink  bool   `json:"is_symlink"`   
 }
 
-func SendCsvToWazuh(cfg *config.Config, headers []string, rows [][]string) error {
+func SendCsvToWazuh(cfg *config.Config, headers []string, rows [][]string, saveBodyRequests bool) error {
 	const (
 		maxEventsPerRequest  = 100
 		maxRequestsPerMinute = 30
@@ -43,11 +43,12 @@ func SendCsvToWazuh(cfg *config.Config, headers []string, rows [][]string) error
 	url := fmt.Sprintf("%s://%s:%d%s?pretty=true&wait_for_complete=true",
 		cfg.Wazuh.Protocol, cfg.Wazuh.ManagerIP, cfg.Wazuh.Port, cfg.Wazuh.Endpoint)
 
-	if err := os.MkdirAll("body", os.ModePerm); err != nil {
-		log.Printf("file|error creating body dir: %v", err)
+	if saveBodyRequests {
+		if err := os.MkdirAll("body", os.ModePerm); err != nil {
+			log.Printf("file|error creating body dir: %v", err)
+		}
 	}
-
-		metadata, err := getFileMetadata(cfg.Paths.Input)
+	metadata, err := getFileMetadata(cfg.Paths.Input)
 	if err != nil {
 		log.Printf("file|error extracting file metadata: %v", err)
 	}
@@ -94,9 +95,11 @@ func SendCsvToWazuh(cfg *config.Config, headers []string, rows [][]string) error
 			continue
 		}
 
-		fileName := fmt.Sprintf("body/batch_%d_%d.json", i, end)
-		if err := os.WriteFile(filepath.Clean(fileName), body, 0644); err != nil {
-			log.Printf("file|error saving batch %d-%d to file: %v", i, end, err)
+		if saveBodyRequests {
+			fileName := fmt.Sprintf("body/batch_%d_%d.json", i, end)
+			if err := os.WriteFile(filepath.Clean(fileName), body, 0644); err != nil {
+				log.Printf("file|error saving batch %d-%d to file: %v", i, end, err)
+			}	
 		}
 
 		req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
