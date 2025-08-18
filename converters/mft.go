@@ -2,6 +2,7 @@ package converters
 
 import (
 	"afc/config"
+	"afc/flags"
 	utils "afc/lib"
 	"context"
 	"fmt"
@@ -14,15 +15,15 @@ import (
 	"www.velocidex.com/golang/go-ntfs/parser"
 )
 
-func ConvertMFTToCsv(files []string, config *config.Config) {
+func ConvertMFTToCsv(files []string, cfg *config.Config, opts *flags.GlobalOptions) {
 	for _, file := range files {
-		if err := convertMFT(file, config); err != nil {
+		if err := convertMFT(file, cfg, opts); err != nil {
 			log.Printf("mft: failed to convert file %s: %v", file, err)
 		}
 	}
 }
 
-func convertMFT(file string, config *config.Config) error {
+func convertMFT(file string, cfg *config.Config, opts *flags.GlobalOptions) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return fmt.Errorf("open error: %w", err)
@@ -105,10 +106,7 @@ func convertMFT(file string, config *config.Config) error {
 		return nil
 	}
 
-	if err := utils.SendCsvToWazuh(config, headers, rows); err != nil {
-		return fmt.Errorf("send to Wazuh failed: %w", err)
-	}
-
+	utils.HandleArtifactConverted(cfg, "mft", file, headers, rows, opts.SkipWazuhSend)
 	return nil
 }
 

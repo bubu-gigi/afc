@@ -2,6 +2,7 @@ package converters
 
 import (
 	"afc/config"
+	"afc/flags"
 	utils "afc/lib"
 	"encoding/binary"
 	"fmt"
@@ -9,36 +10,36 @@ import (
 	"os"
 )
 
-func ConvertTaskJobToCsv(files []string, config *config.Config) {
+func ConvertTaskJobToCsv(files []string, cfg *config.Config, opts *flags.GlobalOptions) {
 	for _, file := range files {
-		convertTaskJob(file, config)
+		convertTaskJob(file, cfg, opts)
 	}
 }
 
-func convertTaskJob(file string, config *config.Config) {
+func convertTaskJob(file string, cfg *config.Config, opts *flags.GlobalOptions) error {
 	f, err := os.Open(file)
 	if err != nil {
 		log.Printf("taskjob: error opening file %s: %v", file, err)
-		return
+		return nil
 	}
 	defer f.Close()
 
 	header := &JobHeader{}
 	if err := readHeader(f, header); err != nil {
 		log.Printf("taskjob: error reading header for file %s: %v", file, err)
-		return
+		return nil
 	}
 
 	instanceCount, appName, params, workingDir, author, comment, userData, reservedData, err := readDataSection(f)
 	if err != nil {
 		log.Printf("taskjob: error reading data section for file %s: %v", file, err)
-		return
+		return nil
 	}
 
 	triggers, err := readTriggers(f)
 	if err != nil {
 		log.Printf("taskjob: error reading triggers for file %s: %v", file, err)
-		return
+		return nil
 	}
 
 	headers := []string{
@@ -70,9 +71,7 @@ func convertTaskJob(file string, config *config.Config) {
 		fmt.Sprintf("%d", len(triggers)),
 	}
 
-	if err := utils.SendCsvToWazuh(config, headers, [][]string{record}); err != nil {
-		log.Printf("taskjob: error sending header CSV for file %s: %v", file, err)
-	}
+	utils.HandleArtifactConverted(cfg, "job", file, headers, [][]string{record}, opts.SkipWazuhSend)
 
 	triggerHeaders := []string{
 		"Index", "BeginDate", "EndDate", "StartTime", "DurationMin", "IntervalMin",
@@ -103,9 +102,9 @@ func convertTaskJob(file string, config *config.Config) {
 		})
 	}
 
-	if err := utils.SendCsvToWazuh(config, triggerHeaders, triggerRows); err != nil {
-		log.Printf("taskjob: error sending triggers CSV for file %s: %v", file, err)
-	}
+	utils.HandleArtifactConverted(cfg, "job", file, triggerHeaders, triggerRows, opts.SkipWazuhSend)
+
+	return nil
 }
 
 func readHeader(file *os.File, header *JobHeader) error {

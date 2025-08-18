@@ -2,6 +2,7 @@ package converters
 
 import (
 	"afc/config"
+	"afc/flags"
 	utils "afc/lib"
 	"encoding/binary"
 	"fmt"
@@ -13,15 +14,15 @@ import (
 	"unicode/utf16"
 )
 
-func ConvertUsnJrnlToCsv(files []string, config *config.Config) {
+func ConvertUsnJrnlToCsv(files []string, config *config.Config, opts *flags.GlobalOptions) {
 	for _, file := range files {
-		if err := convertUsnJrnl(file, config); err != nil {
+		if err := convertUsnJrnl(file, config, opts); err != nil {
 			log.Printf("usn: failed to convert file %s: %v", file, err)
 		}
 	}
 }
 
-func convertUsnJrnl(file string, config *config.Config) error {
+func convertUsnJrnl(file string, config *config.Config, opts *flags.GlobalOptions) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return fmt.Errorf("open error: %w", err)
@@ -73,9 +74,8 @@ func convertUsnJrnl(file string, config *config.Config) error {
 		"SourceFile", "ParsedAt",
 	}
 
-	if err := utils.SendCsvToWazuh(config, headers, rows); err != nil {
-		return fmt.Errorf("send to Wazuh failed: %w", err)
-	}
+	utils.HandleArtifactConverted(config, "journal", file, headers, rows, opts.SkipWazuhSend)
+
 
 	return nil
 }

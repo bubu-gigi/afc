@@ -2,6 +2,7 @@ package converters
 
 import (
 	"afc/config"
+	"afc/flags"
 	utils "afc/lib"
 	"bufio"
 	"fmt"
@@ -9,15 +10,15 @@ import (
 	"os"
 )
 
-func ConvertPSHistoryToCsv(files []string, config *config.Config) {
+func ConvertPSHistoryToCsv(files []string, config *config.Config, opts *flags.GlobalOptions) {
 	for _, file := range files {
-		if err := convertPSHistory(file, config); err != nil {
+		if err := convertPSHistory(file, config, opts); err != nil {
 			log.Printf("powershell: failed to convert file %s: %v", file, err)
 		}
 	}
 }
 
-func convertPSHistory(file string, config *config.Config) error {
+func convertPSHistory(file string, config *config.Config, opts *flags.GlobalOptions) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return fmt.Errorf("open error: %w", err)
@@ -41,9 +42,6 @@ func convertPSHistory(file string, config *config.Config) error {
 		return fmt.Errorf("scan error: %w", err)
 	}
 
-	if err := utils.SendCsvToWazuh(config, headers, rows); err != nil {
-		return fmt.Errorf("send to Wazuh failed: %w", err)
-	}
-
+	utils.HandleArtifactConverted(config, "pshistory", file, headers, rows, opts.SkipWazuhSend)
 	return nil
 }

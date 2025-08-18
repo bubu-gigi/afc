@@ -2,6 +2,7 @@ package converters
 
 import (
 	"afc/config"
+	"afc/flags"
 	utils "afc/lib"
 	"fmt"
 	"log"
@@ -13,15 +14,15 @@ import (
 	prefetch "www.velocidex.com/golang/go-prefetch"
 )
 
-func ConvertPrefetchToCsv(files []string, config *config.Config) {
+func ConvertPrefetchToCsv(files []string, cfg *config.Config, opts *flags.GlobalOptions) {
 	for _, file := range files {
-		if err := convertPrefetch(file, config); err != nil {
+		if err := convertPrefetch(file, cfg, opts); err != nil {
 			log.Printf("prefetch: failed to convert file %s: %v", file, err)
 		}
 	}
 }
 
-func convertPrefetch(file string, config *config.Config) error {
+func convertPrefetch(file string, cfg *config.Config, opts *flags.GlobalOptions) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return fmt.Errorf("open error: %w", err)
@@ -51,10 +52,8 @@ func convertPrefetch(file string, config *config.Config) error {
 		time.Now().Format(time.RFC3339),
 	}
 
-	if err := utils.SendCsvToWazuh(config, headers, [][]string{row}); err != nil {
-		return fmt.Errorf("send to Wazuh failed: %w", err)
-	}
-
+	utils.HandleArtifactConverted(cfg, "prefetch", file, headers, [][]string{row}, opts.SkipWazuhSend)
+	log.Printf("[INFO] Converted prefetch %s with %d records", file, len([][]string{row}))
 	return nil
 }
 

@@ -2,6 +2,7 @@ package converters
 
 import (
 	"afc/config"
+	"afc/flags"
 	utils "afc/lib"
 	"encoding/xml"
 	"fmt"
@@ -9,15 +10,15 @@ import (
 	"os"
 )
 
-func ConvertTaskXmlToCsv(files []string, config *config.Config) {
+func ConvertTaskXmlToCsv(files []string, cfg *config.Config, opts *flags.GlobalOptions) {
 	for _, file := range files {
-		if err := convertTaskXml(file, config); err != nil {
+		if err := convertTaskXml(file, cfg, opts); err != nil {
 			log.Printf("taskxml: error processing file %s: %v", file, err)
 		}
 	}
 }
 
-func convertTaskXml(file string, config *config.Config) error {
+func convertTaskXml(file string, cfg *config.Config, opts *flags.GlobalOptions) error {
 	xmlFile, err := os.Open(file)
 	if err != nil {
 		return fmt.Errorf("taskxml: open error: %w", err)
@@ -67,9 +68,7 @@ func convertTaskXml(file string, config *config.Config) error {
 		triggerEnabled,
 	}
 
-	if err := utils.SendCsvToWazuh(config, headers, [][]string{record}); err != nil {
-		return fmt.Errorf("taskxml: wazuh send error: %w", err)
-	}
+	utils.HandleArtifactConverted(cfg, "taskxml", file, headers, [][]string{record}, opts.SkipWazuhSend)
 
 	return nil
 }

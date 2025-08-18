@@ -240,7 +240,7 @@ func SaveCsvToDisk(cfg *config.Config, artifactSubdir string, srcFilename string
 	return outPath, nil
 }
 
-func HandleArtifactConverted (cfg *config.Config, artifactName string, file string, headers []string, rows [][]string, skipWazuh bool) error {
+func HandleArtifactConverted(cfg *config.Config, artifactName string, file string, headers []string, rows [][]string, skipWazuh bool) error {
 	if skipWazuh {
     	out, err := SaveCsvToDisk(cfg, artifactName, file, headers, rows)
 		if err != nil {

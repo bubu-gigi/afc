@@ -2,6 +2,7 @@ package converters
 
 import (
 	"afc/config"
+	"afc/flags"
 	utils "afc/lib"
 	"encoding/binary"
 	"fmt"
@@ -13,17 +14,17 @@ import (
 	"github.com/richardlehane/mscfb"
 )
 
-func ConvertJumpToCsv(files []string, config *config.Config) {
+func ConvertJumpToCsv(files []string, config *config.Config, opts *flags.GlobalOptions) {
 	for _, file := range files {
 		if strings.HasSuffix(file, ".automaticDestinations-ms") {
-			if err := convertAutomaticDestination(file, config); err != nil {
+			if err := convertAutomaticDestination(file, config, opts); err != nil {
 				log.Printf("[ERROR] Failed to convert jump list file %s: %v", file, err)
 			}
 		}
 	}
 }
 
-func convertAutomaticDestination(file string, config *config.Config) error {
+func convertAutomaticDestination(file string, config *config.Config, opts *flags.GlobalOptions) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return fmt.Errorf("cannot open jump list file %s: %w", file, err)
@@ -39,7 +40,7 @@ func convertAutomaticDestination(file string, config *config.Config) error {
 		if entry.Name == "DestList" {
 			destEntries := parseDestList(rdr)
 			if destEntries != nil {
-				exportDestListToCsv(file, destEntries, config)
+				exportDestList(file, destEntries, config, opts)
 			}
 			break
 		}
@@ -86,7 +87,7 @@ func parseDestList(r io.Reader) []map[string]string {
 	return entries
 }
 
-func exportDestListToCsv(source string, entries []map[string]string, config *config.Config) {
+func exportDestList(file string, entries []map[string]string, config *config.Config, opts *flags.GlobalOptions) {
 	headers := []string{
 		"CreationTime", "LastAccessTime", "PathHash",
 		"DroidVolumeID", "DroidFileID", "BirthDroidVolumeID", "BirthDroidFileID",
@@ -105,9 +106,5 @@ func exportDestListToCsv(source string, entries []map[string]string, config *con
 		})
 	}
 
-	if err := utils.SendCsvToWazuh(config, headers, rows); err != nil {
-		log.Printf("[ERROR] Failed to send DestList CSV for %s: %v", source, err)
-	} else {
-		log.Printf("[INFO] Sent DestList CSV for %s with %d records", source, len(rows))
-	}
+	utils.HandleArtifactConverted(config, "jumpList", file, headers, rows, opts.SkipWazuhSend)
 }

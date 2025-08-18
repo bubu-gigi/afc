@@ -1,5 +1,10 @@
 package flags
 
+type GlobalOptions struct {
+    DumpRequestBodies bool
+    SkipWazuhSend     bool
+}
+
 var (
 	EnableLogging     bool
 	DumpRequestBodies bool

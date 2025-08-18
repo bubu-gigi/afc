@@ -2,6 +2,7 @@ package converters
 
 import (
 	"afc/config"
+	"afc/flags"
 	utils "afc/lib"
 	"encoding/binary"
 	"fmt"
@@ -14,15 +15,15 @@ import (
 	regparser "www.velocidex.com/golang/regparser"
 )
 
-func ConvertRegistryHiveToCsv(files []string, cfg *config.Config) {
+func ConvertRegistryHiveToCsv(files []string, cfg *config.Config, opts *flags.GlobalOptions) {
 	for _, file := range files {
-		if err := convertHive(file, cfg); err != nil {
+		if err := convertHive(file, cfg, opts); err != nil {
 			log.Printf("[ERROR] Failed to convert registry hive %s: %v", file, err)
 		}
 	}
 }
 
-func convertHive(file string, cfg *config.Config) error {
+func convertHive(file string, cfg *config.Config, opts *flags.GlobalOptions) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return fmt.Errorf("cannot open registry hive %s: %w", file, err)
@@ -104,11 +105,7 @@ func convertHive(file string, cfg *config.Config) error {
 
 	walk(root, `\`)
 
-	if err := utils.SendCsvToWazuh(cfg, headers, rows); err != nil {
-		return fmt.Errorf("failed to send registry CSV to Wazuh: %w", err)
-	}
-
-	log.Printf("[INFO] Converted registry hive %s with %d records", file, len(rows))
+	utils.HandleArtifactConverted(cfg, "hive", file, headers, rows, opts.SkipWazuhSend)
 	return nil
 }
 

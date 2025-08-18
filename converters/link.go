@@ -2,6 +2,7 @@ package converters
 
 import (
 	"afc/config"
+	"afc/flags"
 	utils "afc/lib"
 	"encoding/binary"
 	"fmt"
@@ -21,15 +22,15 @@ var (
 	parsedItems         []string
 )
 
-func ConvertLinkToCsv(files []string, config *config.Config) {
+func ConvertLinkToCsv(files []string, config *config.Config, opts *flags.GlobalOptions) {
 	for _, file := range files {
-		if err := convertLink(file, config); err != nil {
+		if err := convertLink(file, config, opts); err != nil {
 			log.Printf("[ERROR] Failed to convert LNK file %s: %v", file, err)
 		}
 	}
 }
 
-func convertLink(file string, config *config.Config) error {
+func convertLink(file string, config *config.Config, opts *flags.GlobalOptions) error {
 	var header [76]byte
 
 	f, err := os.Open(file)
@@ -102,10 +103,8 @@ func convertLink(file string, config *config.Config) error {
 	}
 
 	rows := [][]string{record}
-	if err := utils.SendCsvToWazuh(config, headers, rows); err != nil {
-		return fmt.Errorf("failed to send .lnk CSV to Wazuh: %w", err)
-	}
 
+	utils.HandleArtifactConverted(config, "link", file, headers, rows, opts.SkipWazuhSend)
 	log.Printf("[INFO] Converted LNK file %s", file)
 	return nil
 }

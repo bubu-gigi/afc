@@ -2,6 +2,7 @@ package converters
 
 import (
 	"afc/config"
+	"afc/flags"
 	utils "afc/lib"
 	"encoding/binary"
 	"errors"
@@ -15,7 +16,7 @@ import (
 	"unicode/utf16"
 )
 
-func ConvertRecycleBinToCsv(files []string, config *config.Config) {
+func ConvertRecycleBinToCsv(files []string, config *config.Config, opts *flags.GlobalOptions) {
 	for _, file := range files {
 		switch {
 		case strings.HasPrefix(filepath.Base(file), "$I"):

@@ -157,18 +157,7 @@ func convertEvtx(file string, config *config.Config, opts *flags.GlobalOptions) 
 		allRows = append(allRows, row)
 	}
 
-	if opts.SkipWazuhSend {
-		out, err := utils.SaveCsvToDisk(config, "evtx", file, shortKeys, allRows)
-		if err != nil {
-			return fmt.Errorf("failed to save EVTX CSV: %w", err)
-		}
-		log.Printf("[INFO] CSV saved to %s", out)
-	} else {
-		err = utils.SendCsvToWazuh(config, shortKeys, allRows)
-		if err != nil {
-			return fmt.Errorf("failed to send EVTX CSV to Wazuh: %w", err)
-		}
-	}
+	utils.HandleArtifactConverted(config, "evtx", file, shortKeys, allRows, opts.SkipWazuhSend)
 	log.Printf("[INFO] Converted %d events from file %s", recordCount, file)
 	return nil
 }
