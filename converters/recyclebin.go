@@ -52,7 +52,7 @@ func sendDollarI(file string, entry RecycleEntry, config *config.Config, opts *f
 		file,
 		time.Now().Format(time.RFC3339),
 	}
-	return utils.SendCsvToWazuh(config, headers, [][]string{row}, opts.DumpRequestBodies)
+	return utils.SendToWazuh(config, headers, [][]string{row}, opts.DumpRequestBodies)
 }
 
 func sendINFO2(file string, entries []Info2Entry, config *config.Config, opts *flags.GlobalOptions) error {
@@ -73,7 +73,7 @@ func sendINFO2(file string, entries []Info2Entry, config *config.Config, opts *f
 		}
 		rows = append(rows, row)
 	}
-	return utils.SendCsvToWazuh(config, headers, rows, opts.DumpRequestBodies)
+	return utils.SendToWazuh(config, headers, rows, opts.DumpRequestBodies)
 }
 
 func ParseDollarI(path string) (RecycleEntry, error) {

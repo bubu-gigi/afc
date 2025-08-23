@@ -1,8 +1,12 @@
 package utils
 
 import (
+	"encoding/binary"
 	"fmt"
+	"log"
 	"strings"
+	"unicode"
+	"unicode/utf16"
 )
 
 const (
@@ -52,6 +56,54 @@ const (
 	NotContentIndexed = 1 << 13
 	Encrypted         = 1 << 14
 )
+
+func CheckNullUint16(v uint16) {
+	if v != 0 {
+		log.Fatal("link.header -> Error: Reserved1 not null")
+	}
+}
+
+func CheckNullUint32(v uint32) {
+	if v != 0 {
+		log.Fatal("link.header -> Error: Reserved2 or Reserved3 not null")
+	}
+}
+
+func FindNullTerminator(data []byte) int {
+	for i, b := range data {
+		if b == 0 {
+			return i
+		}
+	}
+	return len(data)
+}
+
+func DecodeUTF16String(b []byte) string {
+	u16 := make([]uint16, len(b)/2)
+	for i := range u16 {
+		u16[i] = binary.LittleEndian.Uint16(b[i*2:])
+	}
+	return string(utf16.Decode(u16))
+}
+
+func FormatMapKeys(m map[string]bool) string {
+	var result []string
+	for k, v := range m {
+		if v {
+			result = append(result, k)
+		}
+	}
+	return strings.Join(result, "; ")
+}
+
+func IsPrintable(s string) bool {
+	for _, r := range s {
+		if !unicode.IsPrint(r) {
+			return false
+		}
+	}
+	return true
+}
 
 func ParseLinkFlags(flags uint32) map[string]bool {
 	return map[string]bool{

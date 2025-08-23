@@ -55,8 +55,6 @@ func convertUsnJrnl(file string, config *config.Config, opts *flags.GlobalOption
 			fmt.Sprintf("%d", rec.FileAttributes),
 			fmt.Sprintf("0x%X", rec.FileAttributes),
 			rec.FileName,
-			file,
-			time.Now().Format(time.RFC3339),
 		}
 		rows = append(rows, row)
 	}
@@ -71,7 +69,6 @@ func convertUsnJrnl(file string, config *config.Config, opts *flags.GlobalOption
 		"FileReferenceNumber", "ParentFileReferenceNumber", "USN",
 		"Timestamp", "Reason", "ReasonDecoded", "SourceInfo",
 		"SecurityID", "FileAttributes", "FileAttributesHex", "FileName",
-		"SourceFile", "ParsedAt",
 	}
 
 	utils.HandleArtifactConverted(config, "journal", file, headers, rows, opts)

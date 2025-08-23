@@ -25,7 +25,7 @@ type FileMetadata struct {
 	IsSymlink  bool   `json:"is_symlink"`   
 }
 
-func SendCsvToWazuh(cfg *config.Config, headers []string, rows [][]string, saveBodyRequests bool) error {
+func SendToWazuh(cfg *config.Config, headers []string, rows [][]string, saveBodyRequests bool) error {
 	const (
 		maxEventsPerRequest  = 100
 		maxRequestsPerMinute = 30

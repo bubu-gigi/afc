@@ -31,6 +31,12 @@ func ConvertLinkToCsv(files []string, config *config.Config, opts *flags.GlobalO
 }
 
 func convertLink(file string, config *config.Config, opts *flags.GlobalOptions) error {
+	shellLink = ShellLink{}
+	linkFlags = map[string]bool{}
+	fileAttributesFlags = map[string]bool{}
+	parsedItems = nil
+	hotKeyLowByte, hotKeyHighByte = "", ""
+
 	var header [76]byte
 
 	f, err := os.Open(file)
