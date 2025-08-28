@@ -13,6 +13,9 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"context"
+    "sync"
+    "golang.org/x/time/rate"
 )
 
 type FileMetadata struct {
@@ -25,12 +28,26 @@ type FileMetadata struct {
 	IsSymlink  bool   `json:"is_symlink"`   
 }
 
+var (
+    rlOnce     sync.Once
+    reqLimiter *rate.Limiter
+)
+
+func initLimiter(maxRequestsPerMinute int) {
+    if maxRequestsPerMinute <= 0 {
+        maxRequestsPerMinute = 30
+    }
+    every := time.Minute / time.Duration(maxRequestsPerMinute)
+    reqLimiter = rate.NewLimiter(rate.Every(every), 1)
+}
+
 func SendToWazuh(cfg *config.Config, headers []string, rows [][]string, saveBodyRequests bool) error {
 	const (
 		maxEventsPerRequest  = 100
 		maxRequestsPerMinute = 30
-		sleepPerRequest      = time.Minute / maxRequestsPerMinute
 	)
+
+	rlOnce.Do(func() { initLimiter(maxRequestsPerMinute) })
 
 	client := &http.Client{}
 	if !cfg.Wazuh.VerifySSL {
@@ -110,6 +127,10 @@ func SendToWazuh(cfg *config.Config, headers []string, rows [][]string, saveBody
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+cfg.Wazuh.Token)
 
+		if err := reqLimiter.Wait(context.Background()); err != nil {
+            log.Printf("rate|wait error: %v", err)
+            continue
+        }
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Printf("http|error sending batch %d-%d: %v", i, end, err)
@@ -139,8 +160,6 @@ func SendToWazuh(cfg *config.Config, headers []string, rows [][]string, saveBody
 		default:
 			log.Printf("❌ [HTTP %d] Batch %d-%d: %s", resp.StatusCode, i, end, string(respBody))
 		}
-
-		time.Sleep(sleepPerRequest)
 	}
 
 	return nil

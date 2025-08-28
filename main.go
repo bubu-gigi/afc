@@ -56,7 +56,7 @@ func main() {
 
 	rootCmd.PersistentFlags().BoolVarP(&flags.EnableLogging, "log", "l", false, "Enable logging on file afc.log")
 	rootCmd.PersistentFlags().BoolVarP(&flags.DumpRequestBodies, "body", "b", false, "Save the requests' body into the /body folder")
-	rootCmd.PersistentFlags().BoolVarP(&flags.SkipWazuhSend, "no-wazuh", "nw", false, "Do not send anything to Wazuh")
+	rootCmd.PersistentFlags().BoolVarP(&flags.SkipWazuhSend, "no-wazuh", "n", false, "Do not send anything to Wazuh")
 	rootCmd.PersistentFlags().StringSliceVarP(&flags.ArtifactFilter, "artifacts", "a", []string{"all"}, "Filter the artifacts to work with")
 
 	if err := rootCmd.Execute(); err != nil {
