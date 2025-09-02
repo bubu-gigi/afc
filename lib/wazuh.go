@@ -13,19 +13,34 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 type FileMetadata struct {
     Filename   string `json:"filename"`
     Abspath    string `json:"abspath"`
     Size       int64  `json:"size"`
-    ModTime    string `json:"modtime"`
+    ATime string `json:"atime,omitempty"`
+    MTime string `json:"mtime,omitempty"`
+    CTime string `json:"ctime,omitempty"`
+    BTime string `json:"btime,omitempty"`
     SHA256     string `json:"sha256"`
     Mode       string `json:"mode"`
     ModeOctal  string `json:"mode_octal"`
     IsSymlink  bool   `json:"is_symlink"`
     LinkTarget string `json:"link_target,omitempty"`
     IsDir      bool   `json:"is_dir"`
+}
+
+type fileBasicInfo struct {
+    CreationTime int64
+    LastAccessTime int64
+    LastWriteTime int64
+    ChangeTime int64
+    FileAttributes uint32
+    _ [4]byte 
 }
 
 func SendToWazuh(cfg *config.Config, filePath string, headers []string, rows [][]string, saveBodyRequests bool) error {
@@ -52,7 +67,6 @@ func SendToWazuh(cfg *config.Config, filePath string, headers []string, rows [][
 		log.Printf("ℹ️ lstat metadata for %q:\n%s", filePath, string(jb))
 	}
 
-    // Costruzione eventi come stringhe
     var events []string
     for idx, row := range rows {
         if len(row) != len(headers) {
@@ -144,7 +158,7 @@ func getFileMetadata(path string) (FileMetadata, error) {
         return FileMetadata{}, err
     }
 
-    info, err := os.Lstat(path) // 👈 NON segue i symlink
+    info, err := os.Lstat(path)
     if err != nil {
         return FileMetadata{}, err
     }
@@ -153,23 +167,61 @@ func getFileMetadata(path string) (FileMetadata, error) {
         Filename:  info.Name(),
         Abspath:   absPath,
         Size:      info.Size(),
-        ModTime:   info.ModTime().Format(time.RFC3339),
         Mode:      info.Mode().String(),
         ModeOctal: fmt.Sprintf("%#o", uint32(info.Mode().Perm())),
         IsSymlink: info.Mode()&os.ModeSymlink != 0,
         IsDir:     info.IsDir(),
     }
 
-    // Se è un symlink, leggi il target ma NON calcolare l'hash
     if md.IsSymlink {
         if target, e := os.Readlink(path); e == nil {
             md.LinkTarget = target
         }
-        return md, nil
     }
 
-    // Calcola SHA256 solo per file regolari
-    if info.Mode().IsRegular() {
+    p16, err := windows.UTF16PtrFromString(filepath.Clean(path))
+    if err == nil {
+        const flags = windows.FILE_FLAG_BACKUP_SEMANTICS | windows.FILE_FLAG_OPEN_REPARSE_POINT
+        h, e := windows.CreateFile(
+            p16,
+            windows.GENERIC_READ,
+            windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+            nil,
+            windows.OPEN_EXISTING,
+            flags,
+            0,
+        )
+
+        if e == nil {
+            defer windows.CloseHandle(h)
+
+            var basic fileBasicInfo
+            if err2 := windows.GetFileInformationByHandleEx(
+                h,
+                windows.FileBasicInfo,
+                (*byte)(unsafe.Pointer(&basic)),
+                uint32(unsafe.Sizeof(basic)),
+            ); err2 == nil {
+                toStr := func(ns100 int64) string {
+                    return time.Unix(0, (ns100-116444736000000000)*100).Format(time.RFC3339Nano)
+                }
+                if basic.LastAccessTime != 0 {
+                    md.ATime = toStr(basic.LastAccessTime)
+                }
+                if basic.LastWriteTime != 0 {
+                    md.MTime = toStr(basic.LastWriteTime)
+                }
+                if basic.ChangeTime != 0 {
+                    md.CTime = toStr(basic.ChangeTime)
+                }
+                if basic.CreationTime != 0 {
+                    md.BTime = toStr(basic.CreationTime)
+                }
+            }
+        }
+    }
+
+    if info.Mode().IsRegular() && !md.IsSymlink {
         f, err := os.Open(path)
         if err != nil {
             return md, err
@@ -182,5 +234,6 @@ func getFileMetadata(path string) (FileMetadata, error) {
         }
         md.SHA256 = fmt.Sprintf("%x", hasher.Sum(nil))
     }
+
     return md, nil
 }
