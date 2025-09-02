@@ -3,7 +3,7 @@ wazuh:
   port: 55000
   protocol: "https"
   endpoint: "/events"
-  token: "xxxxxxxxx"
+  token: "eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ3YXp1aCIsImF1ZCI6IldhenVoIEFQSSBSRVNUIiwibmJmIjoxNzU2NDAzMDEzLCJleHAiOjE4NTY0MDMwMTIsInN1YiI6ImJ1YnVnaWdpIiwicnVuX2FzIjpmYWxzZSwicmJhY19yb2xlcyI6WzFdLCJyYmFjX21vZGUiOiJ3aGl0ZSJ9.AfICL5J9my6G9vLuIBoxExlHfeyq1aQDe0zeljpVH8fkwsGR0NiydHziRxifjSicKssPionxrNb4iOmOUBoWaaJfADJ0mMnk1mtDLUdnw2FAPu9AoDpaYGW6kPh5fLQh7zgXmhdw2g8LGsj0XtEMk4MVlHVvEfhY1Q8jVCtIUMfAS0VS"
   verify_ssl: false
 
 paths:
