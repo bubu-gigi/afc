@@ -61,11 +61,12 @@ func SendToWazuh(cfg *config.Config, filePath string, headers []string, rows [][
         }
     }
 
-   	if meta, err := getFileMetadata(filePath); err != nil {
-		log.Printf("file|error extracting file metadata: %v", err)
-	} else if jb, e := json.MarshalIndent(meta, "", "  "); e == nil {
-		log.Printf("ℹ️ lstat metadata for %q:\n%s", filePath, string(jb))
-	}
+    meta, err := getFileMetadata(filePath)
+    if err != nil {
+        log.Printf("file|error extracting file metadata: %v", err)
+    } else if jb, e := json.MarshalIndent(meta, "", "  "); e == nil {
+        log.Printf("metadata for %q:\n%s", filePath, string(jb))
+    }
 
     var events []string
     for idx, row := range rows {
@@ -74,10 +75,12 @@ func SendToWazuh(cfg *config.Config, filePath string, headers []string, rows [][
             continue
         }
 
-        event := make(map[string]string)
+        event := make(map[string]any)
         for i, h := range headers {
             event[h] = row[i]
         }
+
+        event["metadata"] = meta
 
         eventBytes, err := json.Marshal(event)
         if err != nil {
@@ -152,6 +155,7 @@ func chunkEvents(events []string, maxSize int) [][]string {
 	batches = append(batches, events)
 	return batches
 }
+
 func getFileMetadata(path string) (FileMetadata, error) {
     absPath, err := filepath.Abs(path)
     if err != nil {
