@@ -28,7 +28,7 @@ type FileMetadata struct {
     IsDir      bool   `json:"is_dir"`
 }
 
-func SendToWazuh(cfg *config.Config, headers []string, rows [][]string, saveBodyRequests bool) error {
+func SendToWazuh(cfg *config.Config, filePath string, headers []string, rows [][]string, saveBodyRequests bool) error {
     client := &http.Client{}
     if !cfg.Wazuh.VerifySSL {
         tr := &http.Transport{
@@ -46,13 +46,11 @@ func SendToWazuh(cfg *config.Config, headers []string, rows [][]string, saveBody
         }
     }
 
-    if meta, err := getFileMetadata(cfg.Paths.Input); err != nil {
-        log.Printf("file|error extracting file metadata: %v", err)
-    } else {
-        if jb, e := json.MarshalIndent(meta, "", "  "); e == nil {
-            log.Printf("ℹ️ lstat metadata for %q:\n%s", cfg.Paths.Input, string(jb))
-        }
-    }
+   	if meta, err := getFileMetadata(filePath); err != nil {
+		log.Printf("file|error extracting file metadata: %v", err)
+	} else if jb, e := json.MarshalIndent(meta, "", "  "); e == nil {
+		log.Printf("ℹ️ lstat metadata for %q:\n%s", filePath, string(jb))
+	}
 
     // Costruzione eventi come stringhe
     var events []string
